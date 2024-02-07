@@ -1,0 +1,88 @@
+# This is a basic workflow to help you get started with Actions
+
+name: Convert And Upload
+
+# Controls when the workflow will run
+on:
+  schedule:
+    - cron: "0 14-21 * * *"   
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+    inputs:
+      manual-trigger:
+        description: 'Manually trigger the workflow'
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - name: Checkout repository
+        uses: actions/checkout@v3        
+
+      - name: Set up ffmpeg
+        run: |
+          apt-get update
+          apt-get install -y ffmpeg libgdiplus
+          
+      - name: Build ConsoleM3U8
+        run: dotnet build ./path/to/ConsoleM3U8.csproj --configuration Release
+
+      - name: Publish ConsoleM3U8
+        run: dotnet publish ./path/to/ConsoleM3U8.csproj --configuration Release --output ${{ github.workspace }}/publish
+
+      # Setup rclone
+      - name: Set up rclone
+        uses: AnimMouse/setup-rclone@v1
+        with:
+          rclone_config: ${{ secrets.RCLONE_CONFIG }}
+          token: ${{ secrets.GH_PAT }}
+
+      # Update rclone config
+      - name: Update Rclone config
+        uses: AnimMouse/setup-rclone/update-config@v1
+        with: 
+           rclone_config_secret_name: RCLONE_CONFIG
+           token: ${{ secrets.GH_PAT }}
+
+      - name: Mount Drive
+        env:
+          RCLONE_DRIVE_NAME: ${{secrets.RCLONE_DRIVE_NAME}}
+          MOUNT_NAME: drive_${{secrets.RCLONE_DRIVE_NAME}}
+          MOUNT_PATH: /mnt/${{env.MOUNT_NAME}}
+        run: |
+          rclone mount ${{env.RCLONE_DRIVE_NAME}}:/ ${{env.MOUNT_PATH}} --daemon
+
+      - name: Get Convert File
+        env: 
+          WAIT_CONVERT_FOLDER_PATH: ${{MOUNT_PATH}}/${{secrets.WAIT_CONVERT_RCLONE_FOLDER_PATH}}
+          RESULT_FOLDER_PATH: ${{MOUNT_PATH}}/${{secrets.RESULT_RCLONE_FOLDER_PATH}}
+        run: |
+          FILE_NAME=$(comm -23 <(ls ${{ env.WAIT_CONVERT_FOLDER_PATH }} | sed 's/\.[^.]*$//' | sort -u) <(ls ${{ env.RESULT_FOLDER_PATH }} | sed 's/\.[^.]*$//' | sort -u) | head -n 1)
+          if [ -z "$FILE_NAME" ]; then
+            echo "No file to convert"
+            exit 0
+          fi
+          FILE_FULL_NAME=$(ls ${{ env.WAIT_CONVERT_FOLDER_PATH }} | grep "$FILE_NAME")
+          export WAIT_CONVERT_FILE_NAME=$FILE_NAME
+          export WAIT_CONVERT_FILE_FULL_NAME=$FILE_FULL_NAME
+          rclone copy ${{ env.WAIT_CONVERT_FOLDER_PATH }}/$FILE_FULL_NAME ${{ github.workspace }}
+
+      - name: Convert
+        run: >
+          dotnet ${{ github.workspace }}/publish/ConsoleM3U8.dll
+            -f ${{ github.workspace }}/${{ env.WAIT_CONVERT_FILE_FULL_NAME }}
+            -k ${{ secrets.ENCRYPTION_KEY }}
+            -i ${{ secrets.ENCRYPTION_IV }}
+            -u ${{ secrets.UPLOAD_URL }}
+            -t ${{ secrets.UPLOAD_TOKEN }}
+
+      - name: Upload M3U8
+        run: |
+          rclone copy ${{ github.workspace }}/${{WAIT_CONVERT_FILE_NAME}}/${{WAIT_CONVERT_FILE_NAME}}.m3u8 ${{secrets.RCLONE_DRIVE_NAME}}:/${{secrets.RESULT_RCLONE_FOLDER_PATH}}/
+        
