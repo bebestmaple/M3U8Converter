@@ -218,7 +218,7 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 			}
 		});
 
-		m3u8.Infos = m3u8InfoList.ToList();
+		m3u8.Infos = m3u8InfoList.OrderBy(x=>x.OriFileName).ToList();
 
 		await FileHelper.WriteM3u8ToFileAsync(m3u8, onlineM3u8FilePath);
 
