@@ -71,6 +71,9 @@ jobs:
           WAIT_CONVERT_FOLDER_PATH:  ${{ github.workspace }}/drive_${{secrets.RCLONE_DRIVE_NAME}}/${{secrets.WAIT_CONVERT_RCLONE_FOLDER_PATH}}
           RESULT_FOLDER_PATH:  ${{ github.workspace }}/drive_${{ secrets.RCLONE_DRIVE_NAME }}/${{secrets.RESULT_RCLONE_FOLDER_PATH}}
         run: |
+          if [! -d "${{env.RESULT_FOLDER_PATH}}"];then
+            mkdir -p "${{env.RESULT_FOLDER_PATH}}"
+          fi
           FILE_NAME=$(comm -23 <(ls ${{ env.WAIT_CONVERT_FOLDER_PATH }} | sed 's/\.[^.]*$//' | sort -u) <(ls ${{ env.RESULT_FOLDER_PATH }} | sed 's/\.[^.]*$//' | sort -u) | head -n 1)
           if [ -z "$FILE_NAME" ]; then
             echo "No file to convert"
