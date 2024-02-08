@@ -59,8 +59,8 @@ jobs:
         env:
           RCLONE_DRIVE_NAME: ${{secrets.RCLONE_DRIVE_NAME}}
           MOUNT_NAME: drive_${{secrets.RCLONE_DRIVE_NAME}}
-          MOUNT_PATH: /mnt/${{env.MOUNT_NAME}}
         run: |
+          export MOUNT_PATH = /mnt/${{env.MOUNT_NAME}}
           rclone mount ${{env.RCLONE_DRIVE_NAME}}:/ ${{env.MOUNT_PATH}} --daemon
 
       - name: Get Convert File
