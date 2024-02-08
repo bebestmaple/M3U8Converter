@@ -34,7 +34,7 @@ jobs:
         run: dotnet build ./path/to/ConsoleM3U8.csproj --configuration Release
 
       - name: Publish ConsoleM3U8
-        run: dotnet publish ./path/to/ConsoleM3U8.csproj --configuration Release --output ${{ github.workspace }}/publish
+        run: dotnet publish ./ConsoleM3U8/ConsoleM3U8.csproj --configuration Release --output ${{ github.workspace }}/publish
 
       # Setup rclone
       - name: Set up rclone
@@ -60,8 +60,8 @@ jobs:
 
       - name: Get Convert File
         env: 
-          WAIT_CONVERT_FOLDER_PATH: ${{MOUNT_PATH}}/${{secrets.WAIT_CONVERT_RCLONE_FOLDER_PATH}}
-          RESULT_FOLDER_PATH: ${{MOUNT_PATH}}/${{secrets.RESULT_RCLONE_FOLDER_PATH}}
+          WAIT_CONVERT_FOLDER_PATH: ${{env.MOUNT_PATH}}/${{secrets.WAIT_CONVERT_RCLONE_FOLDER_PATH}}
+          RESULT_FOLDER_PATH: ${{env.MOUNT_PATH}}/${{secrets.RESULT_RCLONE_FOLDER_PATH}}
         run: |
           FILE_NAME=$(comm -23 <(ls ${{ env.WAIT_CONVERT_FOLDER_PATH }} | sed 's/\.[^.]*$//' | sort -u) <(ls ${{ env.RESULT_FOLDER_PATH }} | sed 's/\.[^.]*$//' | sort -u) | head -n 1)
           if [ -z "$FILE_NAME" ]; then
@@ -77,12 +77,14 @@ jobs:
         run: >
           dotnet ${{ github.workspace }}/publish/ConsoleM3U8.dll
             -f ${{ github.workspace }}/${{ env.WAIT_CONVERT_FILE_FULL_NAME }}
-            -k ${{ secrets.ENCRYPTION_KEY }}
-            -i ${{ secrets.ENCRYPTION_IV }}
+            --keyUrl ${{ secrets.ENCRYPTION_KEY_URL }}
+            --ivUrl ${{ secrets.ENCRYPTION_IV_URL }}
             -u ${{ secrets.UPLOAD_URL }}
             -t ${{ secrets.UPLOAD_TOKEN }}
+            -o ${{secrets.ORIGINAL_URL}}
+            -r ${{secrets.REPLACE_URL}}
 
       - name: Upload M3U8
         run: |
-          rclone copy ${{ github.workspace }}/${{WAIT_CONVERT_FILE_NAME}}/${{WAIT_CONVERT_FILE_NAME}}.m3u8 ${{secrets.RCLONE_DRIVE_NAME}}:/${{secrets.RESULT_RCLONE_FOLDER_PATH}}/
+          rclone copy ${{ github.workspace }}/${{env.WAIT_CONVERT_FILE_NAME}}/${{env.WAIT_CONVERT_FILE_NAME}}.m3u8 ${{secrets.RCLONE_DRIVE_NAME}}:/${{secrets.RESULT_RCLONE_FOLDER_PATH}}/
         
