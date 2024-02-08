@@ -60,7 +60,7 @@ jobs:
         env:
           RCLONE_DRIVE_NAME: ${{secrets.RCLONE_DRIVE_NAME}}
           MOUNT_NAME: drive_${{secrets.RCLONE_DRIVE_NAME}}
-          MOUNT_PATH: /mnt/drive_${{secrets.RCLONE_DRIVE_NAME}}
+          MOUNT_PATH: ${{ github.workspace }}/drive_${{secrets.RCLONE_DRIVE_NAME}}
         run: |
           mkdir -p ${{env.MOUNT_PATH}}
           rclone mount ${{env.RCLONE_DRIVE_NAME}}:/ ${{env.MOUNT_PATH}} --daemon
