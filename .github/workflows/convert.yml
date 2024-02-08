@@ -64,6 +64,7 @@ jobs:
         run: |
           mkdir -p ${{env.MOUNT_PATH}}
           rclone mount ${{env.RCLONE_DRIVE_NAME}}:/ ${{env.MOUNT_PATH}} --daemon
+          ls ${{env.MOUNT_PATH}}
 
       - name: Get Convert File
         env: 
