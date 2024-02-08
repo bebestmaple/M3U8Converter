@@ -67,6 +67,7 @@ jobs:
           ls ${{env.MOUNT_PATH}}
 
       - name: Get Convert File
+        id: get_convert_file
         env: 
           WAIT_CONVERT_FOLDER_PATH:  ${{ github.workspace }}/drive_${{secrets.RCLONE_DRIVE_NAME}}/${{secrets.WAIT_CONVERT_RCLONE_FOLDER_PATH}}
           RESULT_FOLDER_PATH:  ${{ github.workspace }}/drive_${{ secrets.RCLONE_DRIVE_NAME }}/${{secrets.RESULT_RCLONE_FOLDER_PATH}}
@@ -80,14 +81,14 @@ jobs:
             exit 0
           fi
           FILE_FULL_NAME=$(ls ${{ env.WAIT_CONVERT_FOLDER_PATH }} | grep "$FILE_NAME")
-          export WAIT_CONVERT_FILE_NAME=$FILE_NAME
-          export WAIT_CONVERT_FILE_FULL_NAME=$FILE_FULL_NAME
+          echo "WAIT_CONVERT_FILE_NAME=$FILE_NAME" >> "$GITHUB_OUTPUT"
+          echo "WAIT_CONVERT_FILE_FULL_NAME=$FILE_FULL_NAME"  >> "$GITHUB_OUTPUT"
           rclone copy "${{ env.WAIT_CONVERT_FOLDER_PATH }}/$FILE_FULL_NAME" ${{ github.workspace }}
 
       - name: Convert
-        run: >
+        run: |
           dotnet ${{ github.workspace }}/publish/ConsoleM3U8.dll
-            -f "${{ github.workspace }}/${{ env.WAIT_CONVERT_FILE_FULL_NAME }}"
+            -f "${{ github.workspace }}/${{ steps.get_convert_file.WAIT_CONVERT_FILE_FULL_NAME }}"
             --keyUrl ${{ secrets.ENCRYPTION_KEY_URL }}
             --ivUrl ${{ secrets.ENCRYPTION_IV_URL }}
             -u ${{ secrets.UPLOAD_URL }}
@@ -97,5 +98,5 @@ jobs:
 
       - name: Upload M3U8
         run: |
-          rclone copy "${{ github.workspace }}/${{env.WAIT_CONVERT_FILE_NAME}}/${{env.WAIT_CONVERT_FILE_NAME}}.m3u8" ${{secrets.RCLONE_DRIVE_NAME}}:/${{secrets.RESULT_RCLONE_FOLDER_PATH}}/
+          rclone copy "${{ github.workspace }}/${{steps.get_convert_file.WAIT_CONVERT_FILE_NAME}}/${{env.WAIT_CONVERT_FILE_NAME}}.m3u8" ${{secrets.RCLONE_DRIVE_NAME}}:/${{secrets.RESULT_RCLONE_FOLDER_PATH}}/
         
