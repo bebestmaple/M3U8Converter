@@ -1,4 +1,5 @@
 ﻿// See https://aka.ms/new-console-template for more information
+using System.Collections.Concurrent;
 using CommandLine;
 using ConsoleM3U8;
 using Microsoft.Extensions.DependencyInjection;
@@ -102,6 +103,8 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 		else if (!string.IsNullOrWhiteSpace(o.KeyUrl) && !string.IsNullOrWhiteSpace(o.IvUrl))
 		{
 			Console.WriteLine("Load Key & IV from web");
+			encryptKeyUrl = o.KeyUrl;
+			encryptIvUrl = o.IvUrl;
 			encryptKey = await httpFactoryHandler.GetContentToBytesAsync(o.KeyUrl);
 			encryptIV = await httpFactoryHandler.GetContentToBytesAsync(o.IvUrl);
 			isNeedUploadKeyFile = false;
@@ -146,16 +149,18 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 			await FileHelper.WriteM3u8ToFileAsync(m3u8, onlineM3u8FilePath);
 		}
 
-		foreach (string tsFilePath in Directory.EnumerateFiles(tempDirectoryPath, "*.ts"))
+		var m3u8InfoList = new ConcurrentBag<M3U8Info>(m3u8.Infos!);
+
+		await Parallel.ForEachAsync(Directory.EnumerateFiles(tempDirectoryPath, "*.ts"), async (tsFilePath, cancellationToken) =>
 		{
 			string fileName = Path.GetFileName(tsFilePath);
 			string encryptedFilePath = tsFilePath + ".jpg";
 			var encryptedFileName = Path.GetFileName(encryptedFilePath);
 
 			// 该文件已上传
-			if (m3u8.Infos!.Any(x => x.OriFileName == fileName && x.File!.StartsWith("http", StringComparison.OrdinalIgnoreCase)))
+			if (m3u8InfoList.Any(x => x.OriFileName == fileName && x.File!.StartsWith("http", StringComparison.OrdinalIgnoreCase)))
 			{
-				continue;
+				return;
 			}
 
 			Console.WriteLine("Encrypting File: " + fileName);
@@ -172,10 +177,10 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 			{
 				try
 				{
-					var uploadFileRet = await httpFactoryHandler.UploadFileAsync(encryptedFilePath, o.UploadUrl!, o.UploadAuthToken, oriUrl: o.OriginalUrl, replaceUrl: o.ReplaceUploadedUrl);
+					var (IsSuccess, Url) = await httpFactoryHandler.UploadFileAsync(encryptedFilePath, o.UploadUrl!, o.UploadAuthToken, oriUrl: o.OriginalUrl, replaceUrl: o.ReplaceUploadedUrl, cancellationToken: cancellationToken);
 
 
-					if (!uploadFileRet.IsSuccess || string.IsNullOrWhiteSpace(uploadFileRet.Url))
+					if (!IsSuccess || string.IsNullOrWhiteSpace(Url))
 					{
 						Console.ForegroundColor = ConsoleColor.White;
 						Console.BackgroundColor = ConsoleColor.DarkYellow;
@@ -185,7 +190,7 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 					}
 					else
 					{
-						encryptedFileUrl = uploadFileRet.Url;
+						encryptedFileUrl = Url;
 						Console.ForegroundColor = ConsoleColor.White;
 						Console.BackgroundColor = ConsoleColor.DarkGreen;
 						Console.Write("[UPLOAD] ");
@@ -202,7 +207,7 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 				retryTime++;
 			}
 
-			foreach (var info in m3u8.Infos!)
+			foreach (var info in m3u8InfoList)
 			{
 				if (info.File == fileName)
 				{
@@ -211,8 +216,79 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 					info.EncryptFileName = encryptedFileName;
 				}
 			}
-			await FileHelper.WriteM3u8ToFileAsync(m3u8, onlineM3u8FilePath);
-		}
+		});
+
+		m3u8.Infos = m3u8InfoList.ToList();
+
+		await FileHelper.WriteM3u8ToFileAsync(m3u8, onlineM3u8FilePath);
+
+		// foreach (string tsFilePath in Directory.EnumerateFiles(tempDirectoryPath, "*.ts").OrderByDescending(x=>x))
+		// {
+		// 	string fileName = Path.GetFileName(tsFilePath);
+		// 	string encryptedFilePath = tsFilePath + ".jpg";
+		// 	var encryptedFileName = Path.GetFileName(encryptedFilePath);
+
+		// 	// 该文件已上传
+		// 	if (m3u8.Infos!.Any(x => x.OriFileName == fileName && x.File!.StartsWith("http", StringComparison.OrdinalIgnoreCase)))
+		// 	{
+		// 		continue;
+		// 	}
+
+		// 	Console.WriteLine("Encrypting File: " + fileName);
+		// 	if (!File.Exists(encryptedFilePath))
+		// 	{
+		// 		await EncryptHelper.EncryptFileAsync(tsFilePath, encryptKey, encryptIV, encryptedFilePath);
+		// 	}
+		// 	Console.WriteLine($"Uploading File[File size: {new FileInfo(encryptedFilePath).Length / Consts._1MB:F2} MB]: {fileName}");
+
+		// 	var encryptedFileUrl = encryptedFileName;
+
+		// 	var retryTime = 0;
+		// 	while (retryTime < 3)
+		// 	{
+		// 		try
+		// 		{
+		// 			var uploadFileRet = await httpFactoryHandler.UploadFileAsync(encryptedFilePath, o.UploadUrl!, o.UploadAuthToken, oriUrl: o.OriginalUrl, replaceUrl: o.ReplaceUploadedUrl);
+
+
+		// 			if (!uploadFileRet.IsSuccess || string.IsNullOrWhiteSpace(uploadFileRet.Url))
+		// 			{
+		// 				Console.ForegroundColor = ConsoleColor.White;
+		// 				Console.BackgroundColor = ConsoleColor.DarkYellow;
+		// 				Console.Write("[WARNING] ");
+		// 				Console.ResetColor();
+		// 				Console.WriteLine(fileName + " Failed to upload");
+		// 			}
+		// 			else
+		// 			{
+		// 				encryptedFileUrl = uploadFileRet.Url;
+		// 				Console.ForegroundColor = ConsoleColor.White;
+		// 				Console.BackgroundColor = ConsoleColor.DarkGreen;
+		// 				Console.Write("[UPLOAD] ");
+		// 				Console.ResetColor();
+		// 				Console.WriteLine(encryptedFileName + " " + encryptedFileUrl);
+		// 				File.Delete(encryptedFilePath);
+		// 				break;
+		// 			}
+		// 		}
+		// 		catch (Exception ex)
+		// 		{
+		// 			Console.WriteLine(ex);
+		// 		}
+		// 		retryTime++;
+		// 	}
+
+		// 	foreach (var info in m3u8.Infos!)
+		// 	{
+		// 		if (info.File == fileName)
+		// 		{
+		// 			info.File = encryptedFileUrl;
+		// 			info.OriFileName = fileName;
+		// 			info.EncryptFileName = encryptedFileName;
+		// 		}
+		// 	}
+		// 	await FileHelper.WriteM3u8ToFileAsync(m3u8, onlineM3u8FilePath);
+		// }
 	});
 
 
