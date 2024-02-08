@@ -87,7 +87,7 @@ jobs:
 
       - name: Convert
         run: |
-          dotnet ${{ github.workspace }}/publish/ConsoleM3U8.dll
+          ${{ github.workspace }}/publish/ConsoleM3U8
             -f "${{ github.workspace }}/${{ steps.get_convert_file.WAIT_CONVERT_FILE_FULL_NAME }}"
             --keyUrl ${{ secrets.ENCRYPTION_KEY_URL }}
             --ivUrl ${{ secrets.ENCRYPTION_IV_URL }}
