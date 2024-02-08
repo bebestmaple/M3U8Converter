@@ -16,6 +16,10 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 	{
 		var videoPath = o.VideoPath;
 		var tempDirectoryPath = Path.Combine(Path.GetDirectoryName(videoPath)!, Path.GetFileNameWithoutExtension(videoPath)!.Trim());
+		if (!Directory.Exists(tempDirectoryPath))
+		{
+			Directory.CreateDirectory(tempDirectoryPath);
+		}
 		var tempDirectoryInfo = new DirectoryInfo(tempDirectoryPath);
 		var m3u8Path = Path.Combine(tempDirectoryPath, "video.m3u8");
 
