@@ -47,6 +47,7 @@ jobs:
         with:
           rclone_config: ${{ secrets.RCLONE_CONFIG }}
           token: ${{ secrets.GH_PAT }}
+          disable_base64: true
 
       # Update rclone config
       - name: Update Rclone config
