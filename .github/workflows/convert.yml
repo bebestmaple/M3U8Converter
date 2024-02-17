@@ -37,7 +37,7 @@ jobs:
       #    apt-get install -y ffmpeg libgdiplus
           
       - name: Build ConsoleM3U8
-        run: ls -la && dotnet build ./ConsoleM3U8/ConsoleM3U8.csproj --configuration Release
+        run: dotnet build ./ConsoleM3U8/ConsoleM3U8.csproj --configuration Release
 
       - name: Publish ConsoleM3U8
         run: dotnet publish ./ConsoleM3U8/ConsoleM3U8.csproj -r linux-x64 --configuration Release --self-contained --output ${{ github.workspace }}/publish
