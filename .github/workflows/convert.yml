@@ -40,7 +40,7 @@ jobs:
         run: ls -la && dotnet build ./ConsoleM3U8/ConsoleM3U8.csproj --configuration Release
 
       - name: Publish ConsoleM3U8
-        run: dotnet publish ./ConsoleM3U8/ConsoleM3U8.csproj --configuration Release --output ${{ github.workspace }}/publish
+        run: dotnet publish ./ConsoleM3U8/ConsoleM3U8.csproj -r linux-x64 --configuration Release --self-contained --output ${{ github.workspace }}/publish
 
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
