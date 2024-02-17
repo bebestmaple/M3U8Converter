@@ -25,16 +25,6 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - name: Checkout repository
         uses: actions/checkout@v3     
-        
-      - name: Setup FFmpeg
-        uses: AnimMouse/setup-ffmpeg@v1
-        with:
-          token: ${{ secrets.GH_PAT }}
-
-      #- name: Set up ffmpeg
-      #  run: |
-      #    apt-get update
-      #    apt-get install -y ffmpeg libgdiplus
           
       - name: Build ConsoleM3U8
         run: dotnet build ./ConsoleM3U8/ConsoleM3U8.csproj --configuration Release
@@ -54,9 +44,19 @@ jobs:
           android: true
           dotnet: true
           haskell: true
-          large-packages: false
+          large-packages: true
           docker-images: true
           swap-storage: true
+        
+      - name: Setup FFmpeg
+        uses: AnimMouse/setup-ffmpeg@v1
+        with:
+          token: ${{ secrets.GH_PAT }}
+
+      #- name: Set up ffmpeg
+      #  run: |
+      #    apt-get update
+      #    apt-get install -y ffmpeg libgdiplus
 
       # Setup rclone
       - name: Set up rclone
