@@ -151,7 +151,10 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 
 		var m3u8InfoList = new ConcurrentBag<M3U8Info>(m3u8.Infos!);
 
-		await Parallel.ForEachAsync(Directory.EnumerateFiles(tempDirectoryPath, "*.ts"), async (tsFilePath, cancellationToken) =>
+		await Parallel.ForEachAsync(Directory.EnumerateFiles(tempDirectoryPath, "*.ts"), new ParallelOptions
+		{
+			MaxDegreeOfParallelism = Environment.ProcessorCount + 2
+		}, async (tsFilePath, cancellationToken) =>
 		{
 			string fileName = Path.GetFileName(tsFilePath);
 			string encryptedFilePath = tsFilePath + ".jpg";
@@ -173,7 +176,7 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 			var encryptedFileUrl = encryptedFileName;
 
 			var retryTime = 0;
-			while (retryTime < 3)
+			while (retryTime < 5)
 			{
 				try
 				{
@@ -218,7 +221,7 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 			}
 		});
 
-		m3u8.Infos = m3u8InfoList.OrderBy(x=>x.OriFileName).ToList();
+		m3u8.Infos = m3u8InfoList.OrderBy(x => x.OriFileName).ToList();
 
 		await FileHelper.WriteM3u8ToFileAsync(m3u8, onlineM3u8FilePath);
 
