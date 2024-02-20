@@ -42,7 +42,7 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 		foreach (var tsFileInfo in tsFileInfos)
 		{
 			var fileLength = tsFileInfo.Length;
-			if (fileLength > 10 * Consts._1MB)
+			if (fileLength > Consts._10MB)
 			{
 				Console.WriteLine($"[ERROR] File size limit exceeded: {tsFileInfo.Name} ({Math.Round(fileLength / Consts._1MB, 2)} MB)");
 				return;
