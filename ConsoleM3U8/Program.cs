@@ -201,7 +201,8 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 					else
 					{
 						encryptedFileUrl = Url;
-						Console.WriteLine($"[UPLOAD]{encryptedFileName} {encryptedFileUrl}");
+						//Console.WriteLine($"[UPLOAD]{encryptedFileName} {encryptedFileUrl}");
+						Console.WriteLine($"[UPLOAD]{encryptedFileName}");
 						File.Delete(encryptedFilePath);
 						break;
 					}
