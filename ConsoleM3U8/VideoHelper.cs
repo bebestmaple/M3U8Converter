@@ -16,7 +16,7 @@ namespace ConsoleM3U8
                    //.WithCustomArgument("-c:v libx264 -preset medium -c:a aac -vbsf h264_mp4toannexb -absf aac_adtstoasc")
                    .WithCustomArgument("-c:v libx264 -crf 23 -preset medium -c:a aac -vbsf h264_mp4toannexb -absf aac_adtstoasc")
                )
-               .NotifyOnProgress(percent => Console.WriteLine($"Convert To TS：{percent}%"), videoDuration)
+               .NotifyOnProgress(percent => Console.Write($"Convert To TS：{percent}% "), videoDuration)
                .ProcessAsynchronously();
 
             if (!isConvetToTsSuccess)
@@ -32,7 +32,7 @@ namespace ConsoleM3U8
                 .OutputToFile(splitTsFilesPath, true, opt => opt
                     .WithCustomArgument($"-c copy -hls_list_size 0 -hls_allow_cache 1 -hls_time 1 -hls_flags split_by_time -f segment -segment_list \"{m3u8Path}\" ")
                 )
-                .NotifyOnProgress(percent => Console.WriteLine($"Split TS：{percent}%"), videoDuration)
+                .NotifyOnProgress(percent => Console.Write($"Split TS：{percent}% "), videoDuration)
                 .ProcessAsynchronously();
 
             File.Delete(videoTsPath);
