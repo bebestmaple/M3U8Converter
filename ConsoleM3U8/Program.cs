@@ -161,8 +161,11 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 		}
 
 		var m3u8InfoList = new ConcurrentBag<M3U8Info>(m3u8.Infos!);
+		var tsFileList = Directory.EnumerateFiles(tempDirectoryPath, "*.ts");
+		var total = tsFileList.Count();
+		var processedCount = 0;
 
-		await Parallel.ForEachAsync(Directory.EnumerateFiles(tempDirectoryPath, "*.ts"), new ParallelOptions
+		await Parallel.ForEachAsync(tsFileList, new ParallelOptions
 		{
 			MaxDegreeOfParallelism = Environment.ProcessorCount + 2
 		}, async (tsFilePath, cancellationToken) =>
@@ -200,9 +203,10 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 					}
 					else
 					{
+						Interlocked.Increment(ref processedCount);
 						encryptedFileUrl = Url;
 						//Console.WriteLine($"[UPLOAD]{encryptedFileName} {encryptedFileUrl}");
-						Console.WriteLine($"[UPLOAD]{encryptedFileName}");
+						Console.WriteLine($"[UPLOAD][{processedCount}/{total}]{encryptedFileName}");
 						File.Delete(encryptedFilePath);
 						break;
 					}
