@@ -24,15 +24,21 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 		var tempDirectoryInfo = new DirectoryInfo(tempDirectoryPath);
 		var m3u8Path = Path.Combine(tempDirectoryPath, "video.m3u8");
 
+		Console.WriteLine("Splitting video file");
 		var isSplitToTsFileSuccess = await VideoHelper.SplitToTsFilesAsync(videoPath!, tempDirectoryPath, m3u8Path);
+
 
 		if (!isSplitToTsFileSuccess)
 		{
 			return;
 		}
 
+		Console.WriteLine("[SUCCESS] Split video file");
+
 		var tsFileInfos = tempDirectoryInfo.GetFiles("*.ts");
-		// 检查TS文件大小是否超过限制
+		
+		Console.WriteLine("[SUCCESS] Checking TS file size");
+		// Check ts file size
 		foreach (var tsFileInfo in tsFileInfos)
 		{
 			var fileLength = tsFileInfo.Length;
@@ -42,16 +48,21 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 				return;
 			}
 		}
+		
+		Console.WriteLine("[SUCCESS] Check TS file size");
 
-		//解析M3U8
-		Console.WriteLine("Parsing M3U8...");
+		// Parse M3U8 file from TS file
+		Console.WriteLine("Parsing M3U8 file...");
 		var m3u8 = await FileHelper.ParseM3U8FromFileAsync(m3u8Path);
+		
+		Console.WriteLine("[SUCCESS] Parse M3U8 file");
 
-		// 合并TS文件
+		// Merge TS file
 		Console.WriteLine("Merging TS files...");
-		await FileHelper.MergeTSFilesAsync(tempDirectoryPath);
+		await FileHelper.MergeTSFilesAsync(tempDirectoryPath);		
+		Console.WriteLine("[SUCCESS] Merge TS file");
 
-		// 写入M3U8文件
+		// Write M3U8
 		Console.WriteLine("Writing M3U8...");
 		var mergedInfoList = new List<M3U8Info>();
 		int tsLast = 0;
@@ -80,7 +91,7 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 		string mergedM3u8Path = Path.Combine(tempDirectoryPath, "video.m3u8");
 		await FileHelper.WriteM3u8ToFileAsync(m3u8, mergedM3u8Path);
 
-		// 加密TS文件
+		// Encrypt TS
 		Console.WriteLine("Encrypting TS files...");
 		string keyFilePath = Path.Combine(tempDirectoryPath, "KEY");
 		string ivFilePath = Path.Combine(tempDirectoryPath, "IV");
@@ -157,10 +168,10 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 		}, async (tsFilePath, cancellationToken) =>
 		{
 			string fileName = Path.GetFileName(tsFilePath);
-			string encryptedFilePath = tsFilePath + ".jpg";
+			string encryptedFilePath = $"{tsFilePath}.jpg";
 			var encryptedFileName = Path.GetFileName(encryptedFilePath);
 
-			// 该文件已上传
+			// file uploaded
 			if (m3u8InfoList.Any(x => x.OriFileName == fileName && x.File!.StartsWith("http", StringComparison.OrdinalIgnoreCase)))
 			{
 				return;
@@ -185,20 +196,12 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 
 					if (!IsSuccess || string.IsNullOrWhiteSpace(Url))
 					{
-						Console.ForegroundColor = ConsoleColor.White;
-						Console.BackgroundColor = ConsoleColor.DarkYellow;
-						Console.Write("[WARNING] ");
-						Console.ResetColor();
-						Console.WriteLine(fileName + " Failed to upload");
+						Console.WriteLine($"[WARNING] {fileName} Failed to upload");
 					}
 					else
 					{
 						encryptedFileUrl = Url;
-						Console.ForegroundColor = ConsoleColor.White;
-						Console.BackgroundColor = ConsoleColor.DarkGreen;
-						Console.Write("[UPLOAD] ");
-						Console.ResetColor();
-						Console.WriteLine(encryptedFileName + " " + encryptedFileUrl);
+						Console.WriteLine($"[UPLOAD]{encryptedFileName} {encryptedFileUrl}");
 						File.Delete(encryptedFilePath);
 						break;
 					}
@@ -224,74 +227,6 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 		m3u8.Infos = m3u8InfoList.OrderBy(x => x.OriFileName).ToList();
 
 		await FileHelper.WriteM3u8ToFileAsync(m3u8, onlineM3u8FilePath);
-
-		// foreach (string tsFilePath in Directory.EnumerateFiles(tempDirectoryPath, "*.ts").OrderByDescending(x=>x))
-		// {
-		// 	string fileName = Path.GetFileName(tsFilePath);
-		// 	string encryptedFilePath = tsFilePath + ".jpg";
-		// 	var encryptedFileName = Path.GetFileName(encryptedFilePath);
-
-		// 	// 该文件已上传
-		// 	if (m3u8.Infos!.Any(x => x.OriFileName == fileName && x.File!.StartsWith("http", StringComparison.OrdinalIgnoreCase)))
-		// 	{
-		// 		continue;
-		// 	}
-
-		// 	Console.WriteLine("Encrypting File: " + fileName);
-		// 	if (!File.Exists(encryptedFilePath))
-		// 	{
-		// 		await EncryptHelper.EncryptFileAsync(tsFilePath, encryptKey, encryptIV, encryptedFilePath);
-		// 	}
-		// 	Console.WriteLine($"Uploading File[File size: {new FileInfo(encryptedFilePath).Length / Consts._1MB:F2} MB]: {fileName}");
-
-		// 	var encryptedFileUrl = encryptedFileName;
-
-		// 	var retryTime = 0;
-		// 	while (retryTime < 3)
-		// 	{
-		// 		try
-		// 		{
-		// 			var uploadFileRet = await httpFactoryHandler.UploadFileAsync(encryptedFilePath, o.UploadUrl!, o.UploadAuthToken, oriUrl: o.OriginalUrl, replaceUrl: o.ReplaceUploadedUrl);
-
-
-		// 			if (!uploadFileRet.IsSuccess || string.IsNullOrWhiteSpace(uploadFileRet.Url))
-		// 			{
-		// 				Console.ForegroundColor = ConsoleColor.White;
-		// 				Console.BackgroundColor = ConsoleColor.DarkYellow;
-		// 				Console.Write("[WARNING] ");
-		// 				Console.ResetColor();
-		// 				Console.WriteLine(fileName + " Failed to upload");
-		// 			}
-		// 			else
-		// 			{
-		// 				encryptedFileUrl = uploadFileRet.Url;
-		// 				Console.ForegroundColor = ConsoleColor.White;
-		// 				Console.BackgroundColor = ConsoleColor.DarkGreen;
-		// 				Console.Write("[UPLOAD] ");
-		// 				Console.ResetColor();
-		// 				Console.WriteLine(encryptedFileName + " " + encryptedFileUrl);
-		// 				File.Delete(encryptedFilePath);
-		// 				break;
-		// 			}
-		// 		}
-		// 		catch (Exception ex)
-		// 		{
-		// 			Console.WriteLine(ex);
-		// 		}
-		// 		retryTime++;
-		// 	}
-
-		// 	foreach (var info in m3u8.Infos!)
-		// 	{
-		// 		if (info.File == fileName)
-		// 		{
-		// 			info.File = encryptedFileUrl;
-		// 			info.OriFileName = fileName;
-		// 			info.EncryptFileName = encryptedFileName;
-		// 		}
-		// 	}
-		// 	await FileHelper.WriteM3u8ToFileAsync(m3u8, onlineM3u8FilePath);
-		// }
 	});
 
 
