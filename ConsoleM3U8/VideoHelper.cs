@@ -13,8 +13,8 @@ namespace ConsoleM3U8
                .FromFileInput(videoPath)
                .OutputToFile(videoTsPath, true, opt => opt
                    //.WithCustomArgument("-c copy -vbsf h264_mp4toannexb -absf aac_adtstoasc")
-                   //.WithCustomArgument("-c:v libx264 -preset medium -c:a aac -vbsf h264_mp4toannexb -absf aac_adtstoasc")
-                   .WithCustomArgument("-c:v libx264 -crf 23 -preset medium -c:a aac -vbsf h264_mp4toannexb -absf aac_adtstoasc")
+                   .WithCustomArgument("-c:v libx264 -preset medium -c:a aac -vbsf h264_mp4toannexb -absf aac_adtstoasc")
+                   //.WithCustomArgument("-c:v libx264 -crf 23 -preset medium -c:a aac -vbsf h264_mp4toannexb -absf aac_adtstoasc")
                )
                .NotifyOnProgress(percent => Console.Write($"Convert To TS：{percent}% "), videoDuration)
                .ProcessAsynchronously();
