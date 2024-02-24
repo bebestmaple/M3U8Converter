@@ -59,7 +59,7 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 
 		// Merge TS file
 		Console.WriteLine("Merging TS files...");
-		await FileHelper.MergeTSFilesAsync(tempDirectoryPath);		
+		await FileHelper.MergeTSFiles2Async(tempDirectoryPath);		
 		Console.WriteLine("[SUCCESS] Merge TS file");
 
 		// Write M3U8
@@ -82,14 +82,14 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 			mergedInfoList.Add(new M3U8Info
 			{
 				Duration = mergedDuration,
-				File = m3u8.Infos![i].File
+				File = m3u8.Infos![i].File,
+				OriFileName = m3u8.Infos![i].File,
 			});
 			tsLast = i + 1;
 		}
 		m3u8.Infos = mergedInfoList;
 
-		string mergedM3u8Path = Path.Combine(tempDirectoryPath, "video.m3u8");
-		await FileHelper.WriteM3u8ToFileAsync(m3u8, mergedM3u8Path);
+		await FileHelper.WriteM3u8ToFileAsync(m3u8, m3u8Path);
 
 		// Encrypt TS
 		Console.WriteLine("Encrypting TS files...");
@@ -218,7 +218,7 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 				retryTime++;
 			}
 
-			foreach (var info in m3u8InfoList)
+			foreach (var info in m3u8.Infos!)
 			{
 				if (info.File == fileName)
 				{
@@ -229,7 +229,7 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 			}
 		});
 
-		m3u8.Infos = m3u8InfoList.OrderBy(x => x.OriFileName).ToList();
+		m3u8.Infos = m3u8.Infos!.OrderBy(x => x.OriFileName).ToList();
 
 		await FileHelper.WriteM3u8ToFileAsync(m3u8, onlineM3u8FilePath);
 	});
