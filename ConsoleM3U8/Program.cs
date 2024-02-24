@@ -161,8 +161,8 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 		}
 
 		var m3u8InfoList = new ConcurrentBag<M3U8Info>(m3u8.Infos!);
-		var tsFileList = Directory.EnumerateFiles(tempDirectoryPath, "*.ts");
-		var total = tsFileList.Count();
+		var tsFileList = Directory.EnumerateFiles(tempDirectoryPath, "*.ts").ToList();
+		var total = tsFileList.Count;
 		var processedCount = 0;
 
 		await Parallel.ForEachAsync(tsFileList, new ParallelOptions
@@ -190,7 +190,7 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 			var encryptedFileUrl = encryptedFileName;
 
 			var retryTime = 0;
-			while (retryTime < 5)
+			while (retryTime < 50)
 			{
 				try
 				{
