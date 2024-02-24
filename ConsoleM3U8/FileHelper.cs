@@ -5,12 +5,19 @@ namespace ConsoleM3U8
 		public static async Task MergeTSFilesAsync(string tsFileDirPath)
 		{
 			var tempDirectoryInfo = new DirectoryInfo(tsFileDirPath);
-			var tsFileInfos = tempDirectoryInfo.GetFiles("*.ts").OrderBy(x => x.Name).ToList();
+			var tsFileCount = tempDirectoryInfo.GetFiles("*.ts").Length;
 			int fastStart = 3;
-			for (int i = 0; i < tsFileInfos.Count; i++)
+			for (int i = 0; i < tsFileCount; i++)
 			{
-				var lastFileInfo = tsFileInfos[i - 1];
-				var currentFileInfo = tsFileInfos[i];
+				var lastFilePath = Path.Combine(tsFileDirPath, $"{i - 1:d4}.ts");
+				var currentFilePath = Path.Combine(tsFileDirPath, $"{i:d4}.ts");
+				if (!File.Exists(lastFilePath))
+				{
+					continue;
+				}
+
+				var lastFileInfo = new FileInfo(lastFilePath);
+				var currentFileInfo = new FileInfo(currentFilePath);
 
 				if (lastFileInfo.Length + currentFileInfo.Length <= (fastStart > 0 ? Consts._2MB : Consts._1MB))
 				{
@@ -19,11 +26,11 @@ namespace ConsoleM3U8
 					Console.ForegroundColor = ConsoleColor.White;
 					Console.Write("[MERGE]");
 					Console.ResetColor();
-					Console.WriteLine($" {i}.ts <- {i - 1}.ts");
-					await JoinFilesAsync(new List<string> { lastFileInfo.FullName, currentFileInfo.FullName }, tempTsFilePath);
-					lastFileInfo.Delete();
-					currentFileInfo.Delete();
-					File.Move(tempTsFilePath, currentFileInfo.FullName);
+					Console.WriteLine($" {i:d4}.ts <- {i - 1:d4}.ts");
+					await JoinFilesAsync(new List<string> { lastFilePath, currentFilePath }, tempTsFilePath);
+					File.Delete(lastFilePath);
+					File.Delete(currentFilePath);
+					File.Move(tempTsFilePath, currentFilePath);
 				}
 				else
 				{
@@ -34,11 +41,11 @@ namespace ConsoleM3U8
 					if (fastStart > 0)
 					{
 						fastStart--;
-						Console.WriteLine($" {i}.ts ({Math.Round(lastFileInfo.Length / Consts._1MB, 2)} MB) + {Math.Round(currentFileInfo.Length / Consts._1MB, 2)} MB)");
+						Console.WriteLine($" {i:d4}.ts ({Math.Round(lastFileInfo.Length / Consts._1MB, 2)} MB) + {Math.Round(currentFileInfo.Length / Consts._1MB, 2)} MB)");
 					}
 					else
 					{
-						Console.WriteLine($" {i}.ts ({Math.Round(currentFileInfo.Length / Consts._1MB, 2)} MB)");
+						Console.WriteLine($" {i:d4}.ts ({Math.Round(currentFileInfo.Length / Consts._1MB, 2)} MB)");
 					}
 				}
 			}
@@ -47,24 +54,25 @@ namespace ConsoleM3U8
 		public static async Task MergeTSFiles2Async(string tsFileDirPath)
 		{
 			var tempDirectoryInfo = new DirectoryInfo(tsFileDirPath);
-			var tsFileInfos = tempDirectoryInfo.GetFiles("*.ts").OrderBy(x => x.Name).ToList();
-			var tsFileCount = tsFileInfos.Count;
+			var tsFileCount = tempDirectoryInfo.GetFiles("*.ts").Length;
 			int fastStart = 3;
 			int lastCount = 0;
 			var sizes = new decimal[] { Consts._1MB * 4, Consts._1MB * 3, Consts._2MB, Consts._1MB };
 
 			for (int i = 0; i < tsFileCount - 1; i++)
 			{
-				var currentFileInfo = tsFileInfos[i];
-				var nextFileInfo = tsFileInfos[i + 1];
+				var currentFilePath = Path.Combine(tsFileDirPath, $"{i:d4}.ts");
+				var nextFilePath = Path.Combine(tsFileDirPath, $"{i + 1:d4}.ts");
+				var currentFileInfo = new FileInfo(currentFilePath);
+				var nextFileInfo = new FileInfo(nextFilePath);
 
 				if (currentFileInfo.Length + nextFileInfo.Length <= sizes[fastStart])
 				{
 					var tempTsFilePath = Path.Combine(tsFileDirPath, "~.ts");
-					await JoinFilesAsync(new List<string> { currentFileInfo.FullName, nextFileInfo.FullName }, tempTsFilePath);
-					currentFileInfo.Delete();
-					nextFileInfo.Delete();
-					File.Move(tempTsFilePath, nextFileInfo.FullName);
+					await JoinFilesAsync(new List<string> { currentFilePath, nextFilePath }, tempTsFilePath);
+					File.Delete(currentFilePath);
+					File.Delete(nextFilePath);
+					File.Move(tempTsFilePath, nextFilePath);
 				}
 				else
 				{
@@ -76,11 +84,11 @@ namespace ConsoleM3U8
 					if (fastStart > 0)
 					{
 						fastStart--;
-						Console.WriteLine($" {lastCount}-{i - 1} -> {i}.ts ({Math.Round(currentFileInfo.Length / Consts._1MB, 2)} MB FastStart)");
+						Console.WriteLine($" {lastCount:d4}-{(i - 1):d4} -> {i:d4}.ts ({Math.Round(currentFileInfo.Length / Consts._1MB, 2)} MB FastStart)");
 					}
 					else
 					{
-						Console.WriteLine($" {lastCount}-{i - 1} -> {i}.ts ({Math.Round(currentFileInfo.Length / Consts._1MB, 2)} MB)");
+						Console.WriteLine($" {lastCount:d4}-{(i - 1):d4} -> {i:d4}.ts ({Math.Round(currentFileInfo.Length / Consts._1MB, 2)} MB)");
 					}
 
 					lastCount = i + 1;
@@ -91,7 +99,7 @@ namespace ConsoleM3U8
 					Console.BackgroundColor = ConsoleColor.DarkCyan;
 					Console.ForegroundColor = ConsoleColor.White;
 					Console.Write("[MERGE]");
-					Console.WriteLine($" {lastCount}-{i} -> {i + 1}.ts ({Math.Round(nextFileInfo.Length / Consts._1MB, 2)} MB)");
+					Console.WriteLine($" {lastCount:d4}-{i:d4} -> {i + 1:d4}.ts ({Math.Round(nextFileInfo.Length / Consts._1MB, 2)} MB)");
 				}
 			}
 		}
