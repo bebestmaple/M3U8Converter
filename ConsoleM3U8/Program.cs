@@ -35,7 +35,7 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 
 		Console.WriteLine("[SUCCESS] Split video file");
 
-		var tsFileInfos = tempDirectoryInfo.GetFiles("*.ts");
+		var tsFileInfos = tempDirectoryInfo.GetFiles("*.ts").OrderBy(x=>x.Name).ToList();
 		
 		Console.WriteLine("[SUCCESS] Checking TS file size");
 		// Check ts file size
@@ -66,9 +66,9 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 		Console.WriteLine("Writing M3U8...");
 		var mergedInfoList = new List<M3U8Info>();
 		int tsLast = 0;
-		for (int i = 0; i < tsFileInfos.Length; i++)
+		for (int i = 0; i < tsFileInfos.Count; i++)
 		{
-			var tsFilePath = tsFileInfos[i].FullName;
+			var tsFilePath = Path.Combine(tempDirectoryPath,$"{i:d4}.ts");
 			if (!File.Exists(tsFilePath))
 			{
 				continue;
@@ -218,7 +218,7 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 				retryTime++;
 			}
 
-			foreach (var info in m3u8.Infos!)
+			foreach (var info in m3u8InfoList)
 			{
 				if (info.File == fileName)
 				{
@@ -229,7 +229,7 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 			}
 		});
 
-		m3u8.Infos = m3u8.Infos!.OrderBy(x => x.OriFileName).ToList();
+		m3u8.Infos = m3u8InfoList.OrderBy(x => x.OriFileName).ToList();
 
 		await FileHelper.WriteM3u8ToFileAsync(m3u8, onlineM3u8FilePath);
 	});
