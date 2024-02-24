@@ -5,20 +5,12 @@ namespace ConsoleM3U8
 		public static async Task MergeTSFilesAsync(string tsFileDirPath)
 		{
 			var tempDirectoryInfo = new DirectoryInfo(tsFileDirPath);
-			var tsFileInfos = tempDirectoryInfo.GetFiles("*.ts");
+			var tsFileInfos = tempDirectoryInfo.GetFiles("*.ts").OrderBy(x => x.Name).ToList();
 			int fastStart = 3;
-			for (int i = 0; i < tsFileInfos.Length; i++)
+			for (int i = 0; i < tsFileInfos.Count; i++)
 			{
-				string lastPath = Path.Combine(tsFileDirPath, $"{i - 1}.ts");
-				string currentPath = Path.Combine(tsFileDirPath, $"{i}.ts");
-
-				if (!File.Exists(lastPath))
-				{
-					continue;
-				}
-
-				var lastFileInfo = new FileInfo(lastPath);
-				var currentFileInfo = new FileInfo(currentPath);
+				var lastFileInfo = tsFileInfos[i - 1];
+				var currentFileInfo = tsFileInfos[i];
 
 				if (lastFileInfo.Length + currentFileInfo.Length <= (fastStart > 0 ? Consts._2MB : Consts._1MB))
 				{
@@ -28,11 +20,10 @@ namespace ConsoleM3U8
 					Console.Write("[MERGE]");
 					Console.ResetColor();
 					Console.WriteLine($" {i}.ts <- {i - 1}.ts");
-					await JoinFilesAsync(new List<string> { lastPath, currentPath }, tempTsFilePath);
-
-					File.Delete(lastPath);
-					File.Delete(currentPath);
-					File.Move(tempTsFilePath, currentPath);
+					await JoinFilesAsync(new List<string> { lastFileInfo.FullName, currentFileInfo.FullName }, tempTsFilePath);
+					lastFileInfo.Delete();
+					currentFileInfo.Delete();
+					File.Move(tempTsFilePath, currentFileInfo.FullName);
 				}
 				else
 				{
@@ -56,28 +47,24 @@ namespace ConsoleM3U8
 		public static async Task MergeTSFiles2Async(string tsFileDirPath)
 		{
 			var tempDirectoryInfo = new DirectoryInfo(tsFileDirPath);
-			var tsFileInfos = tempDirectoryInfo.GetFiles("*.ts");
-			var tsFileCount = tsFileInfos.Length;
+			var tsFileInfos = tempDirectoryInfo.GetFiles("*.ts").OrderBy(x => x.Name).ToList();
+			var tsFileCount = tsFileInfos.Count;
 			int fastStart = 3;
 			int lastCount = 0;
 			var sizes = new decimal[] { Consts._1MB * 4, Consts._1MB * 3, Consts._2MB, Consts._1MB };
 
 			for (int i = 0; i < tsFileCount - 1; i++)
 			{
-				string currentPath = Path.Combine(tsFileDirPath, $"{i}.ts");
-				string nextPath = Path.Combine(tsFileDirPath, $"{i + 1}.ts");
-
-				var currentFileInfo = new FileInfo(currentPath);
-				var nextFileInfo = new FileInfo(nextPath);
+				var currentFileInfo = tsFileInfos[i];
+				var nextFileInfo = tsFileInfos[i + 1];
 
 				if (currentFileInfo.Length + nextFileInfo.Length <= sizes[fastStart])
 				{
 					var tempTsFilePath = Path.Combine(tsFileDirPath, "~.ts");
-					await JoinFilesAsync(new List<string> { currentPath, nextPath }, tempTsFilePath);
-
-					File.Delete(currentPath);
-					File.Delete(nextPath);
-					File.Move(tempTsFilePath, nextPath);
+					await JoinFilesAsync(new List<string> { currentFileInfo.FullName, nextFileInfo.FullName }, tempTsFilePath);
+					currentFileInfo.Delete();
+					nextFileInfo.Delete();
+					File.Move(tempTsFilePath, nextFileInfo.FullName);
 				}
 				else
 				{
