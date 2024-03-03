@@ -15,8 +15,59 @@ var httpFactoryHandler = serviceProvider.GetRequiredService<HttpFactoryHandler>(
 await CommandLine.Parser.Default.ParseArguments<Options>(args)
 	.WithParsedAsync(async o =>
 	{
-		var videoPath = o.VideoPath;
-		var tempDirectoryPath = Path.Combine(Path.GetDirectoryName(videoPath)!, Path.GetFileNameWithoutExtension(videoPath)!.Trim());
+		var remoteWait2ConvertPath = o.RemoteWaitConvertFolderPath!;
+		var remoteResultPath = o.RemoteResultFolderPath!;
+
+		if (!Directory.Exists(remoteResultPath))
+		{
+			Console.WriteLine("Create remote result directory");
+			Directory.CreateDirectory(remoteResultPath);
+		}
+
+		Console.WriteLine("Get remote file need to convert");
+		var remoteWaitConvertDirInfo = new DirectoryInfo(remoteWait2ConvertPath);
+		var remoteResultDirInfo = new DirectoryInfo(remoteResultPath);
+
+		var remoteWaitConvertFileInfos = remoteResultDirInfo.GetFiles();
+		if (remoteWaitConvertFileInfos == null || remoteWaitConvertFileInfos.Length <= 0)
+		{
+			Console.WriteLine("No file to convert");
+			return;
+		}
+		var remoteResultFileInfos = remoteResultDirInfo.GetFiles();
+		var remoteResultFileNames = remoteResultFileInfos
+			.Select(x => Path.GetFileNameWithoutExtension(x.Name))
+			.ToArray();
+		var remoteWaitConvertFilePathQuery = remoteWaitConvertFileInfos
+			.Where(x => !remoteResultFileNames.Contains(Path.GetFileNameWithoutExtension(x.Name)));
+		remoteWaitConvertFilePathQuery = o.FileCompareType switch
+		{
+			2 => remoteWaitConvertFilePathQuery.OrderByDescending(x => x.Name, new NaturalFileNameSortComparer()),
+			3 => remoteWaitConvertFilePathQuery.OrderBy(x => x.Length),
+			4 => remoteWaitConvertFilePathQuery.OrderByDescending(x => x.Length),
+			_ => remoteWaitConvertFilePathQuery.OrderBy(x => x.Name, new NaturalFileNameSortComparer()),
+		};
+		var remoteWaitConvertFileInfo = remoteWaitConvertFilePathQuery.FirstOrDefault();
+		if (remoteWaitConvertFileInfo == null)
+		{
+			Console.WriteLine("No file to convert");
+			return;
+		}
+		Console.WriteLine("[SUCCESS] Get remote file need to convert");
+
+		Console.WriteLine("Copy remote file to local");
+		var localFolderPath = o.LocalFolderPath!;
+		var waitConvertFileName = remoteWaitConvertFileInfo.Name;
+		var videoPath = Path.Combine(localFolderPath, waitConvertFileName);
+		ProcessHelper.Excute("rclone", $"copy \"{remoteWaitConvertFileInfo.FullName}\" \"{localFolderPath}\"");
+		if (File.Exists(videoPath))
+		{
+			Console.WriteLine("[Error] Copy remote file to local Failed");
+			Environment.Exit(1);
+		}
+		Console.WriteLine("[SUCCESS] Copy remote file to local");
+
+		var tempDirectoryPath = Path.Combine(localFolderPath, Path.GetFileNameWithoutExtension(videoPath)!.Trim());
 		if (!Directory.Exists(tempDirectoryPath))
 		{
 			Directory.CreateDirectory(tempDirectoryPath);
@@ -29,14 +80,15 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 
 
 		if (!isSplitToTsFileSuccess)
-		{
+		{			
+			Environment.Exit(1);
 			return;
 		}
 
 		Console.WriteLine("[SUCCESS] Split video file");
 
-		var tsFileInfos = tempDirectoryInfo.GetFiles("*.ts").OrderBy(x=>x.Name).ToList();
-		
+		var tsFileInfos = tempDirectoryInfo.GetFiles("*.ts").OrderBy(x => x.Name).ToList();
+
 		Console.WriteLine("[SUCCESS] Checking TS file size");
 		// Check ts file size
 		foreach (var tsFileInfo in tsFileInfos)
@@ -45,21 +97,22 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 			if (fileLength > Consts._10MB)
 			{
 				Console.WriteLine($"[ERROR] File size limit exceeded: {tsFileInfo.Name} ({Math.Round(fileLength / Consts._1MB, 2)} MB)");
-				return;
+				
+			Environment.Exit(1);
 			}
 		}
-		
+
 		Console.WriteLine("[SUCCESS] Check TS file size");
 
 		// Parse M3U8 file from TS file
 		Console.WriteLine("Parsing M3U8 file...");
 		var m3u8 = await FileHelper.ParseM3U8FromFileAsync(m3u8Path);
-		
+
 		Console.WriteLine("[SUCCESS] Parse M3U8 file");
 
 		// Merge TS file
 		Console.WriteLine("Merging TS files...");
-		await FileHelper.MergeTSFiles2Async(tempDirectoryPath);		
+		await FileHelper.MergeTSFiles2Async(tempDirectoryPath);
 		Console.WriteLine("[SUCCESS] Merge TS file");
 
 		// Write M3U8
@@ -68,7 +121,7 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 		int tsLast = 0;
 		for (int i = 0; i < tsFileInfos.Count; i++)
 		{
-			var tsFilePath = Path.Combine(tempDirectoryPath,$"{i:d4}.ts");
+			var tsFilePath = Path.Combine(tempDirectoryPath, $"{i:d4}.ts");
 			if (!File.Exists(tsFilePath))
 			{
 				continue;
@@ -232,13 +285,7 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 		m3u8.Infos = m3u8InfoList.OrderBy(x => x.OriFileName).ToList();
 
 		await FileHelper.WriteM3u8ToFileAsync(m3u8, onlineM3u8FilePath);
+
+		// echo reult file path
+		ProcessHelper.Excute("echo",$"\"RESULT_PATH={onlineM3u8FilePath}\" >> \"$GITHUB_OUTPUT\"");
 	});
-
-
-
-
-
-
-
-
-

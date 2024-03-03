@@ -76,30 +76,39 @@ jobs:
           mkdir -p ${{env.MOUNT_PATH}}
           rclone mount ${{env.RCLONE_DRIVE_NAME}}:/ ${{env.MOUNT_PATH}} --daemon
 
-      - name: Get Convert File
-        id: get_convert_file
-        env: 
-          WAIT_CONVERT_FOLDER_PATH:  ${{ github.workspace }}/drive_${{secrets.RCLONE_DRIVE_NAME}}/${{secrets.WAIT_CONVERT_RCLONE_FOLDER_PATH}}
-          RESULT_FOLDER_PATH:  ${{ github.workspace }}/drive_${{ secrets.RCLONE_DRIVE_NAME }}/${{secrets.RESULT_RCLONE_FOLDER_PATH}}
-        run: |
-          if [ ! -d "${{env.RESULT_FOLDER_PATH}}" ];then
-            mkdir -p "${{env.RESULT_FOLDER_PATH}}"
-          fi
-          FILE_NAME=$(comm -23 <(ls ${{ env.WAIT_CONVERT_FOLDER_PATH }} | sed 's/\.[^.]*$//' | sort -u || true) <(ls ${{ env.RESULT_FOLDER_PATH }} | sed 's/\.[^.]*$//' | sort -u || true) | head -n 1)
-          if [ -z "$FILE_NAME" ]; then
-            echo "No file to convert"
-            exit 0
-          fi
-          FILE_FULL_NAME=$(ls ${{ env.WAIT_CONVERT_FOLDER_PATH }} | grep "$FILE_NAME")
-          echo "WAIT_CONVERT_FILE_NAME=$FILE_NAME" >> "$GITHUB_OUTPUT"
-          echo "WAIT_CONVERT_FILE_FULL_NAME=$FILE_FULL_NAME"  >> "$GITHUB_OUTPUT"
-          rclone copy "${{ env.WAIT_CONVERT_FOLDER_PATH }}/$FILE_FULL_NAME" ${{ github.workspace }}
+      # - name: Get Convert File
+      #   id: get_convert_file
+      #   env: 
+      #     WAIT_CONVERT_FOLDER_PATH:  ${{ github.workspace }}/drive_${{secrets.RCLONE_DRIVE_NAME}}/${{secrets.WAIT_CONVERT_RCLONE_FOLDER_PATH}}
+      #     RESULT_FOLDER_PATH:  ${{ github.workspace }}/drive_${{ secrets.RCLONE_DRIVE_NAME }}/${{secrets.RESULT_RCLONE_FOLDER_PATH}}
+      #   run: |
+      #     if [ ! -d "${{env.RESULT_FOLDER_PATH}}" ];then
+      #       mkdir -p "${{env.RESULT_FOLDER_PATH}}"
+      #     fi
+      #     FILE_NAME=$(comm -23 <(ls ${{ env.WAIT_CONVERT_FOLDER_PATH }} | sed 's/\.[^.]*$//' | sort -u || true) <(ls ${{ env.RESULT_FOLDER_PATH }} | sed 's/\.[^.]*$//' | sort -u || true) | head -n 1)
+      #     if [ -z "$FILE_NAME" ]; then
+      #       echo "No file to convert"
+      #       exit 0
+      #     fi
+      #     FILE_FULL_NAME=$(ls ${{ env.WAIT_CONVERT_FOLDER_PATH }} | grep "$FILE_NAME")
+      #     echo "WAIT_CONVERT_FILE_NAME=$FILE_NAME" >> "$GITHUB_OUTPUT"
+      #     echo "WAIT_CONVERT_FILE_FULL_NAME=$FILE_FULL_NAME"  >> "$GITHUB_OUTPUT"
+      #     rclone copy "${{ env.WAIT_CONVERT_FOLDER_PATH }}/$FILE_FULL_NAME" ${{ github.workspace }}
+
+      # - name: Convert
+      #   run: |
+      #     ${{ github.workspace }}/publish/ConsoleM3U8 -f "${{ github.workspace }}/${{ steps.get_convert_file.outputs.WAIT_CONVERT_FILE_FULL_NAME }}" --keyUrl "${{ secrets.ENCRYPTION_KEY_URL }}" --ivUrl "${{ secrets.ENCRYPTION_IV_URL }}" -u ${{ secrets.UPLOAD_URL }} -t "${{ secrets.UPLOAD_TOKEN }}" -o ${{secrets.ORIGINAL_URL}} -r ${{secrets.REPLACE_URL}}
+
+      # - name: Upload M3U8
+      #   run: |
+      #     rclone copy "${{ github.workspace }}/${{steps.get_convert_file.outputs.WAIT_CONVERT_FILE_NAME}}/${{steps.get_convert_file.outputs.WAIT_CONVERT_FILE_NAME}}.m3u8" ${{secrets.RCLONE_DRIVE_NAME}}:/${{secrets.RESULT_RCLONE_FOLDER_PATH}}/
 
       - name: Convert
+        id: convert
         run: |
-          ${{ github.workspace }}/publish/ConsoleM3U8 -f "${{ github.workspace }}/${{ steps.get_convert_file.outputs.WAIT_CONVERT_FILE_FULL_NAME }}" --keyUrl "${{ secrets.ENCRYPTION_KEY_URL }}" --ivUrl "${{ secrets.ENCRYPTION_IV_URL }}" -u ${{ secrets.UPLOAD_URL }} -t "${{ secrets.UPLOAD_TOKEN }}" -o ${{secrets.ORIGINAL_URL}} -r ${{secrets.REPLACE_URL}}
+          ${{ github.workspace }}/publish/ConsoleM3U8 --remote-convert-folder "${{ github.workspace }}/drive_${{secrets.RCLONE_DRIVE_NAME}}/${{secrets.WAIT_CONVERT_RCLONE_FOLDER_PATH}}"--remote-result-folder "${{ github.workspace }}/drive_${{ secrets.RCLONE_DRIVE_NAME }}/${{secrets.RESULT_RCLONE_FOLDER_PATH}}" --file-compare-type 3 -local-folder "${{ github.workspace }}" --keyUrl "${{ secrets.ENCRYPTION_KEY_URL }}" --ivUrl "${{ secrets.ENCRYPTION_IV_URL }}" -u ${{ secrets.UPLOAD_URL }} -t "${{ secrets.UPLOAD_TOKEN }}" -o ${{secrets.ORIGINAL_URL}} -r ${{secrets.REPLACE_URL}}
 
       - name: Upload M3U8
         run: |
-          rclone copy "${{ github.workspace }}/${{steps.get_convert_file.outputs.WAIT_CONVERT_FILE_NAME}}/${{steps.get_convert_file.outputs.WAIT_CONVERT_FILE_NAME}}.m3u8" ${{secrets.RCLONE_DRIVE_NAME}}:/${{secrets.RESULT_RCLONE_FOLDER_PATH}}/
+          rclone copy "${{steps.convert.outputs.RESULT_PATH}}" ${{secrets.RCLONE_DRIVE_NAME}}:/${{secrets.RESULT_RCLONE_FOLDER_PATH}}/
         
