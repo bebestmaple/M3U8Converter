@@ -55,11 +55,12 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 		}
 		Console.WriteLine("[SUCCESS] Get remote file need to convert");
 
-		Console.WriteLine("Copy remote file to local");
-		var localFolderPath = o.LocalFolderPath!;
+
 		var waitConvertFileName = remoteWaitConvertFileInfo.Name;
-		var videoPath = Path.Combine(localFolderPath, waitConvertFileName);
+		Console.WriteLine($"Copy remote file to local:{waitConvertFileName}[{FileHelper.FormatFileSize(remoteWaitConvertFileInfo.Length)}]");
+		var localFolderPath = o.LocalFolderPath!;
 		ProcessHelper.Excute("rclone", $"copy \"{remoteWaitConvertFileInfo.FullName}\" \"{localFolderPath}\"");
+		var videoPath = Path.Combine(localFolderPath, waitConvertFileName);
 		if (!File.Exists(videoPath))
 		{
 			Console.WriteLine("[Error] Copy remote file to local Failed");
@@ -88,14 +89,14 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 
 		var tsFileInfos = tempDirectoryInfo.GetFiles("*.ts").OrderBy(x => x.Name).ToList();
 
-		Console.WriteLine("[SUCCESS] Checking TS file size");
+		Console.WriteLine("Checking TS file size");
 		// Check ts file size
 		foreach (var tsFileInfo in tsFileInfos)
 		{
 			var fileLength = tsFileInfo.Length;
 			if (fileLength > Consts._10MB)
 			{
-				Console.WriteLine($"[ERROR] File size limit exceeded: {tsFileInfo.Name} ({Math.Round(fileLength / Consts._1MB, 2)} MB)");
+				Console.WriteLine($"[ERROR] File size limit exceeded: {tsFileInfo.Name} ({FileHelper.FormatFileSize(fileLength)})");
 				Environment.Exit(1);
 			}
 		}
@@ -236,7 +237,7 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 			{
 				await EncryptHelper.EncryptFileAsync(tsFilePath, encryptKey, encryptIV, encryptedFilePath);
 			}
-			Console.WriteLine($"Uploading File[File size: {new FileInfo(encryptedFilePath).Length / Consts._1MB:F2} MB]: {fileName}");
+			Console.WriteLine($"Uploading File[File size: {FileHelper.FormatFileSize(new FileInfo(encryptedFilePath).Length)}]: {fileName}");
 
 			var encryptedFileUrl = encryptedFileName;
 
@@ -284,7 +285,6 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 
 		await FileHelper.WriteM3u8ToFileAsync(m3u8, onlineM3u8FilePath);
 
-		Console.WriteLine($"::set-output name=RESULT_PATH::{onlineM3u8FilePath}");
-		// echo reult file path
-		//ProcessHelper.Excute("echo", $"\"RESULT_PATH={onlineM3u8FilePath}\" >> \"$GITHUB_OUTPUT\"");
+		//Console.WriteLine($"::set-output name=RESULT_PATH::{onlineM3u8FilePath}");
+		Console.WriteLine($"\"RESULT_PATH={onlineM3u8FilePath}\" >> $GITHUB_OUTPUT");
 	});

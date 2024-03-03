@@ -1,6 +1,6 @@
 namespace ConsoleM3U8
 {
-    public class NaturalFileNameSortComparer : System.Collections.Generic.IComparer<string>
+    public sealed class NaturalFileNameSortComparer : System.Collections.Generic.IComparer<string>
     {
     	/// <summary>
     	/// compare

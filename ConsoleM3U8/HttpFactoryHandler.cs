@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 
 namespace ConsoleM3U8
 {
-    public class HttpFactoryHandler
+    public sealed class HttpFactoryHandler
     {
         internal const string _HttpClientName = "HttpFactoryHandler";
 
@@ -76,7 +76,7 @@ namespace ConsoleM3U8
 
                 var requestBodyBytes = await content.ReadAsByteArrayAsync(cancellationToken);
                 var requestBodySizeInBytes = requestBodyBytes.Length;
-                Console.WriteLine($"Request body size: {requestBodySizeInBytes / Consts._1MB:F2} MB]");
+                Console.WriteLine($"Request body size: {FileHelper.FormatFileSize(requestBodySizeInBytes)}");
 
                 using var response = await httpClient.PostAsync(uploadUrl, content, cancellationToken);
 

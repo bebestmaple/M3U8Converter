@@ -41,11 +41,11 @@ namespace ConsoleM3U8
 					if (fastStart > 0)
 					{
 						fastStart--;
-						Console.WriteLine($" {i:d4}.ts ({Math.Round(lastFileInfo.Length / Consts._1MB, 2)} MB) + {Math.Round(currentFileInfo.Length / Consts._1MB, 2)} MB)");
+						Console.WriteLine($" {i:d4}.ts ({FormatFileSize(lastFileInfo.Length)}) + {FormatFileSize(currentFileInfo.Length)})");
 					}
 					else
 					{
-						Console.WriteLine($" {i:d4}.ts ({Math.Round(currentFileInfo.Length / Consts._1MB, 2)} MB)");
+						Console.WriteLine($" {i:d4}.ts ({FormatFileSize(currentFileInfo.Length)})");
 					}
 				}
 			}
@@ -84,11 +84,11 @@ namespace ConsoleM3U8
 					if (fastStart > 0)
 					{
 						fastStart--;
-						Console.WriteLine($" {lastCount:d4}-{(i - 1):d4} -> {i:d4}.ts ({Math.Round(currentFileInfo.Length / Consts._1MB, 2)} MB FastStart)");
+						Console.WriteLine($" {lastCount:d4}-{(i - 1):d4} -> {i:d4}.ts ({FormatFileSize(currentFileInfo.Length)} FastStart)");
 					}
 					else
 					{
-						Console.WriteLine($" {lastCount:d4}-{(i - 1):d4} -> {i:d4}.ts ({Math.Round(currentFileInfo.Length / Consts._1MB, 2)} MB)");
+						Console.WriteLine($" {lastCount:d4}-{(i - 1):d4} -> {i:d4}.ts ({FormatFileSize(currentFileInfo.Length)})");
 					}
 
 					lastCount = i + 1;
@@ -99,7 +99,7 @@ namespace ConsoleM3U8
 					Console.BackgroundColor = ConsoleColor.DarkCyan;
 					Console.ForegroundColor = ConsoleColor.White;
 					Console.Write("[MERGE]");
-					Console.WriteLine($" {lastCount:d4}-{i:d4} -> {i + 1:d4}.ts ({Math.Round(nextFileInfo.Length / Consts._1MB, 2)} MB)");
+					Console.WriteLine($" {lastCount:d4}-{i:d4} -> {i + 1:d4}.ts ({FormatFileSize(nextFileInfo.Length)})");
 				}
 			}
 		}
@@ -173,6 +173,27 @@ namespace ConsoleM3U8
 			m3u8ContentList.Add("#EXT-X-ENDLIST");
 
 			await File.WriteAllLinesAsync(m3u8FilePath, m3u8ContentList);
+		}
+
+		private static readonly string[] sizeUnits = { "B", "KB", "MB", "GB", "TB" };
+		public static string FormatFileSize(long fileSizeInBytes)
+		{
+			decimal size = fileSizeInBytes;
+			int unitIndex = 0;
+
+			while (size >= 1024 && unitIndex < sizeUnits.Length - 1)
+			{
+				size /= 1024;
+				unitIndex++;
+			}
+
+			string unit = sizeUnits[unitIndex];
+
+			int decimalPlaces = size < 10 ? 2 : 1;
+
+			size = Math.Round(size, decimalPlaces);
+
+			return $"{size} {unit}";
 		}
 	}
 }

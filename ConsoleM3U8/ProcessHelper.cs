@@ -1,7 +1,7 @@
 using System.Diagnostics;
 
 namespace ConsoleM3U8;
-public class ProcessHelper
+public sealed class ProcessHelper
 {
     public static void Excute(string fileNamePath, string arguments = "")
     {
