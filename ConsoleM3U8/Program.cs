@@ -28,11 +28,11 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 		var remoteWaitConvertDirInfo = new DirectoryInfo(remoteWait2ConvertPath);
 		var remoteResultDirInfo = new DirectoryInfo(remoteResultPath);
 
-		var remoteWaitConvertFileInfos = remoteResultDirInfo.GetFiles();
+		var remoteWaitConvertFileInfos = remoteWaitConvertDirInfo.GetFiles();
 		if (remoteWaitConvertFileInfos == null || remoteWaitConvertFileInfos.Length <= 0)
 		{
 			Console.WriteLine("No file to convert");
-			return;
+			Environment.Exit(1);
 		}
 		var remoteResultFileInfos = remoteResultDirInfo.GetFiles();
 		var remoteResultFileNames = remoteResultFileInfos
@@ -51,7 +51,7 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 		if (remoteWaitConvertFileInfo == null)
 		{
 			Console.WriteLine("No file to convert");
-			return;
+			Environment.Exit(1);
 		}
 		Console.WriteLine("[SUCCESS] Get remote file need to convert");
 
@@ -80,9 +80,8 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 
 
 		if (!isSplitToTsFileSuccess)
-		{			
+		{
 			Environment.Exit(1);
-			return;
 		}
 
 		Console.WriteLine("[SUCCESS] Split video file");
@@ -97,8 +96,7 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 			if (fileLength > Consts._10MB)
 			{
 				Console.WriteLine($"[ERROR] File size limit exceeded: {tsFileInfo.Name} ({Math.Round(fileLength / Consts._1MB, 2)} MB)");
-				
-			Environment.Exit(1);
+				Environment.Exit(1);
 			}
 		}
 
@@ -190,14 +188,14 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 			if (!uploadKeyFileRet.IsSuccess)
 			{
 				Console.WriteLine("Upload KEY file Failed");
-				return;
+				Environment.Exit(1);
 			}
 			encryptKeyUrl = uploadKeyFileRet.Url;
 			var uploadIvFileRet = await httpFactoryHandler.UploadFileAsync(ivFilePath, o.UploadUrl!, o.UploadAuthToken, oriUrl: o.OriginalUrl, replaceUrl: o.ReplaceUploadedUrl);
 			if (!uploadKeyFileRet.IsSuccess)
 			{
 				Console.WriteLine("Upload IV file Failed");
-				return;
+				Environment.Exit(1);
 			}
 			encryptIvUrl = uploadIvFileRet.Url;
 		}
@@ -287,5 +285,5 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 		await FileHelper.WriteM3u8ToFileAsync(m3u8, onlineM3u8FilePath);
 
 		// echo reult file path
-		ProcessHelper.Excute("echo",$"\"RESULT_PATH={onlineM3u8FilePath}\" >> \"$GITHUB_OUTPUT\"");
+		ProcessHelper.Excute("echo", $"\"RESULT_PATH={onlineM3u8FilePath}\" >> \"$GITHUB_OUTPUT\"");
 	});
