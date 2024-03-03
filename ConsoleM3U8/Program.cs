@@ -60,7 +60,7 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 		var waitConvertFileName = remoteWaitConvertFileInfo.Name;
 		var videoPath = Path.Combine(localFolderPath, waitConvertFileName);
 		ProcessHelper.Excute("rclone", $"copy \"{remoteWaitConvertFileInfo.FullName}\" \"{localFolderPath}\"");
-		if (File.Exists(videoPath))
+		if (!File.Exists(videoPath))
 		{
 			Console.WriteLine("[Error] Copy remote file to local Failed");
 			Environment.Exit(1);
