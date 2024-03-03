@@ -11,7 +11,7 @@ namespace ConsoleM3U8
         [Option("remote-result-folder", Required = true, HelpText = "Set remote result path")]
         public string? RemoteResultFolderPath { get; set; }
 
-        [Option("file-compare-type", Default = 1, Min = 1, Max = 4, HelpText = "1(default):file name asc 2: file name desc 3:file size asc 4: file size desc")]
+        [Option("file-compare-type", Default = 1, HelpText = "1(default):file name asc 2: file name desc 3:file size asc 4: file size desc")]
         public int FileCompareType { get; set; } = 1;
 
         [Option("local-folder", Required = true, HelpText = "Set local path")]
