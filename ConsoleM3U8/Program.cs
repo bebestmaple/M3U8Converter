@@ -285,6 +285,6 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 
 		await FileHelper.WriteM3u8ToFileAsync(m3u8, onlineM3u8FilePath);
 
-		//Console.WriteLine($"::set-output name=RESULT_PATH::{onlineM3u8FilePath}");
-		Console.WriteLine($"\"RESULT_PATH={onlineM3u8FilePath}\" >> $GITHUB_OUTPUT");
+		Console.WriteLine($"::set-output name=RESULT_PATH::{onlineM3u8FilePath}");
+		//Console.WriteLine($"\"RESULT_PATH={onlineM3u8FilePath}\" >> $GITHUB_OUTPUT");
 	});
