@@ -68,7 +68,7 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 		}
 		Console.WriteLine("[SUCCESS] Copy remote file to local");
 
-		var tempDirectoryPath = Path.Combine(localFolderPath, Path.GetFileNameWithoutExtension(videoPath)!.Trim());
+		var tempDirectoryPath = Path.Combine(localFolderPath, Path.GetFileNameWithoutExtension(videoPath).Trim());
 		if (!Directory.Exists(tempDirectoryPath))
 		{
 			Directory.CreateDirectory(tempDirectoryPath);
@@ -77,13 +77,13 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 		var m3u8Path = Path.Combine(tempDirectoryPath, "video.m3u8");
 
 		Console.WriteLine("Splitting video file");
-		var isSplitToTsFileSuccess = await VideoHelper.SplitToTsFilesAsync(videoPath!, tempDirectoryPath, m3u8Path);
-
+		var isSplitToTsFileSuccess = await VideoHelper.SplitToTsFilesAsync(videoPath, tempDirectoryPath, m3u8Path);
 
 		if (!isSplitToTsFileSuccess)
 		{
 			Environment.Exit(1);
 		}
+		File.Delete(videoPath);
 
 		Console.WriteLine("[SUCCESS] Split video file");
 
@@ -110,9 +110,11 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 		Console.WriteLine("[SUCCESS] Parse M3U8 file");
 
 		// Merge TS file
+		GitHubActionHelper.StartWriteGroupLog("Merging TS files");
 		Console.WriteLine("Merging TS files...");
 		await FileHelper.MergeTSFiles2Async(tempDirectoryPath);
 		Console.WriteLine("[SUCCESS] Merge TS file");
+		GitHubActionHelper.EndWriteGroupLog();
 
 		// Write M3U8
 		Console.WriteLine("Writing M3U8...");
@@ -144,6 +146,7 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 		await FileHelper.WriteM3u8ToFileAsync(m3u8, m3u8Path);
 
 		// Encrypt TS
+		GitHubActionHelper.StartWriteGroupLog("Encrypt & Upload");
 		Console.WriteLine("Encrypting TS files...");
 		string keyFilePath = Path.Combine(tempDirectoryPath, "KEY");
 		string ivFilePath = Path.Combine(tempDirectoryPath, "IV");
@@ -185,20 +188,18 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 		if (isNeedUploadKeyFile)
 		{
 			Console.WriteLine("Uploading KEY & IV files");
-			var uploadKeyFileRet = await httpFactoryHandler.UploadFileAsync(keyFilePath, o.UploadUrl!, o.UploadAuthToken, oriUrl: o.OriginalUrl, replaceUrl: o.ReplaceUploadedUrl);
-			if (!uploadKeyFileRet.IsSuccess)
+			(var isUploadKeyFileSuccess,encryptKeyUrl) = await httpFactoryHandler.UploadFileAsync(keyFilePath, o.UploadUrl!, o.UploadAuthToken, oriUrl: o.OriginalUrl, replaceUrl: o.ReplaceUploadedUrl);
+			if (!isUploadKeyFileSuccess)
 			{
 				Console.WriteLine("Upload KEY file Failed");
 				Environment.Exit(1);
 			}
-			encryptKeyUrl = uploadKeyFileRet.Url;
-			var uploadIvFileRet = await httpFactoryHandler.UploadFileAsync(ivFilePath, o.UploadUrl!, o.UploadAuthToken, oriUrl: o.OriginalUrl, replaceUrl: o.ReplaceUploadedUrl);
-			if (!uploadKeyFileRet.IsSuccess)
+			(var isUploadIvFileSuccess, encryptIvUrl) = await httpFactoryHandler.UploadFileAsync(ivFilePath, o.UploadUrl!, o.UploadAuthToken, oriUrl: o.OriginalUrl, replaceUrl: o.ReplaceUploadedUrl);
+			if (!isUploadIvFileSuccess)
 			{
 				Console.WriteLine("Upload IV file Failed");
 				Environment.Exit(1);
 			}
-			encryptIvUrl = uploadIvFileRet.Url;
 		}
 
 		string onlineM3u8FilePath = Path.Combine(tempDirectoryPath, $"{tempDirectoryInfo.Name}.m3u8");
@@ -281,10 +282,13 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 			}
 		});
 
+		GitHubActionHelper.EndWriteGroupLog();
+
 		m3u8.Infos = m3u8InfoList.OrderBy(x => x.OriFileName).ToList();
 
 		await FileHelper.WriteM3u8ToFileAsync(m3u8, onlineM3u8FilePath);
 
-		Console.WriteLine($"::set-output name=RESULT_PATH::{onlineM3u8FilePath}");
+		GitHubActionHelper.WriteToGitHubOutput("RESULT_PATH", onlineM3u8FilePath);
+		//Console.WriteLine($"::set-output name=RESULT_PATH::{onlineM3u8FilePath}");
 		//Console.WriteLine($"\"RESULT_PATH={onlineM3u8FilePath}\" >> $GITHUB_OUTPUT");
 	});

@@ -76,8 +76,6 @@ namespace ConsoleM3U8
 				}
 				else
 				{
-					Console.BackgroundColor = ConsoleColor.DarkGreen;
-					Console.ForegroundColor = ConsoleColor.White;
 					Console.Write("[MERGE]");
 
 
@@ -96,8 +94,6 @@ namespace ConsoleM3U8
 
 				if (i == tsFileCount - 2)
 				{
-					Console.BackgroundColor = ConsoleColor.DarkCyan;
-					Console.ForegroundColor = ConsoleColor.White;
 					Console.Write("[MERGE]");
 					Console.WriteLine($" {lastCount:d4}-{i:d4} -> {i + 1:d4}.ts ({FormatFileSize(nextFileInfo.Length)})");
 				}
