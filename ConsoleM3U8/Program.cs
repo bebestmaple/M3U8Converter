@@ -41,23 +41,18 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 			Console.WriteLine("No file to convert");
 			Environment.Exit(1);
 		}
-		FileInfo? remoteWaitConvertFileInfo = null;
-		var convertingCacheKey = "Converting";
-		while (true)
-		{
-			var convertingFileList = (await cli.HGetAllAsync(convertingCacheKey))?.Keys.ToList() ?? new List<string>();
 
+		// Check the list key in redis
+		var listKey = "Wait";
+		if (!await cli.ExistsAsync(listKey))
+		{
 			var remoteResultDirInfo = new DirectoryInfo(remoteResultPath);
 			var remoteResultFileInfos = remoteResultDirInfo.GetFiles();
 			var remoteResultFileNames = remoteResultFileInfos
 				.Select(x => Path.GetFileNameWithoutExtension(x.Name))
 				.ToArray();
 			var remoteWaitConvertFilePathQuery = remoteWaitConvertFileInfos
-				.Where(x =>
-				{
-					var name = Path.GetFileNameWithoutExtension(x.Name);
-					return !remoteResultFileNames.Contains(name) && !convertingFileList.Contains(name);
-				});
+			.Where(x => !remoteResultFileNames.Contains(Path.GetFileNameWithoutExtension(x.Name)));
 			remoteWaitConvertFilePathQuery = o.FileCompareType switch
 			{
 				2 => remoteWaitConvertFilePathQuery.OrderByDescending(x => x.Name, new NaturalFileNameSortComparer()),
@@ -65,26 +60,43 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 				4 => remoteWaitConvertFilePathQuery.OrderByDescending(x => x.Length),
 				_ => remoteWaitConvertFilePathQuery.OrderBy(x => x.Name, new NaturalFileNameSortComparer()),
 			};
-			remoteWaitConvertFileInfo = remoteWaitConvertFilePathQuery.FirstOrDefault();
-			if (remoteWaitConvertFileInfo == null)
+			var remoteWaitConvertFileNameList = remoteWaitConvertFilePathQuery.Select(x => x.Name).ToList();
+			if (remoteWaitConvertFileNameList.Any())
 			{
-				Console.WriteLine("No file to convert");
-				Environment.Exit(1);
-			}
-			Console.WriteLine("[SUCCESS] Get remote file need to convert");
-
-
-			var isSetKeySuccess = await cli.HSetNxAsync(convertingCacheKey, Path.GetFileNameWithoutExtension(remoteWaitConvertFileInfo.Name), "1");
-			if (isSetKeySuccess)
-			{
-				break;
+				foreach (var fileName in remoteWaitConvertFileNameList)
+				{
+					await cli.RPushAsync(listKey, fileName);
+				}
 			}
 			else
 			{
-				remoteWaitConvertFileInfo = null;
+				Console.WriteLine("Nothing set to redis");
+				Environment.Exit(1);
 			}
 		}
-		var waitConvertFileName = remoteWaitConvertFileInfo.Name;
+
+
+		var waitConvertFileName = await cli.BLPopAsync(listKey, 5);
+
+		if (string.IsNullOrEmpty(waitConvertFileName))
+		{
+			Console.WriteLine("Nothing in redis list");
+			Environment.Exit(1);
+		}
+
+		var remoteWaitConvertFileInfo = remoteWaitConvertFileInfos.FirstOrDefault(x=>x.Name == waitConvertFileName);
+		if (remoteWaitConvertFileInfo == null)
+		{
+			Console.WriteLine($"no file named {waitConvertFileName}");
+			Environment.Exit(1);
+		}
+		var convertingCacheKey = "Converting";
+		var convertingFileList = (await cli.HGetAllAsync(convertingCacheKey))?.Keys.ToList() ?? new List<string>();
+		
+		Console.WriteLine("[SUCCESS] Get remote file need to convert");
+
+		var isSetKeySuccess = await cli.HSetNxAsync(convertingCacheKey, Path.GetFileNameWithoutExtension(remoteWaitConvertFileInfo.Name), "1");
+
 		Console.WriteLine($"Copy remote file to local:{waitConvertFileName}[{FileHelper.FormatFileSize(remoteWaitConvertFileInfo.Length)}]");
 		var localFolderPath = o.LocalFolderPath!;
 		ProcessHelper.Excute("rclone", $"copy \"{remoteWaitConvertFileInfo.FullName}\" \"{localFolderPath}\"");
