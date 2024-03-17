@@ -2,7 +2,9 @@
 using System.Collections.Concurrent;
 using CommandLine;
 using ConsoleM3U8;
+using FreeRedis;
 using Microsoft.Extensions.DependencyInjection;
+using Newtonsoft.Json;
 
 // 创建依赖注入容器
 var serviceProvider = new ServiceCollection()
@@ -15,6 +17,12 @@ var httpFactoryHandler = serviceProvider.GetRequiredService<HttpFactoryHandler>(
 await CommandLine.Parser.Default.ParseArguments<Options>(args)
 	.WithParsedAsync(async o =>
 	{
+		var cli = new RedisClient(o.RedisConnectionString!)
+		{
+			Serialize = obj => JsonConvert.SerializeObject(obj),
+			Deserialize = (json, type) => JsonConvert.DeserializeObject(json, type)
+		};
+
 		var remoteWait2ConvertPath = o.RemoteWaitConvertFolderPath!;
 		var remoteResultPath = o.RemoteResultFolderPath!;
 
@@ -26,7 +34,6 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 
 		Console.WriteLine("Get remote file need to convert");
 		var remoteWaitConvertDirInfo = new DirectoryInfo(remoteWait2ConvertPath);
-		var remoteResultDirInfo = new DirectoryInfo(remoteResultPath);
 
 		var remoteWaitConvertFileInfos = remoteWaitConvertDirInfo.GetFiles();
 		if (remoteWaitConvertFileInfos == null || remoteWaitConvertFileInfos.Length <= 0)
@@ -34,12 +41,20 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 			Console.WriteLine("No file to convert");
 			Environment.Exit(1);
 		}
+		var convertingCacheKey = "Converting";
+		var convertingFileList = (await cli.HGetAllAsync(convertingCacheKey))?.Keys.ToList() ?? new List<string>();
+
+		var remoteResultDirInfo = new DirectoryInfo(remoteResultPath);
 		var remoteResultFileInfos = remoteResultDirInfo.GetFiles();
 		var remoteResultFileNames = remoteResultFileInfos
 			.Select(x => Path.GetFileNameWithoutExtension(x.Name))
 			.ToArray();
 		var remoteWaitConvertFilePathQuery = remoteWaitConvertFileInfos
-			.Where(x => !remoteResultFileNames.Contains(Path.GetFileNameWithoutExtension(x.Name)));
+			.Where(x =>
+			{
+				var name = Path.GetFileNameWithoutExtension(x.Name);
+				return !remoteResultFileNames.Contains(name) && !convertingFileList.Contains(name);
+			});
 		remoteWaitConvertFilePathQuery = o.FileCompareType switch
 		{
 			2 => remoteWaitConvertFilePathQuery.OrderByDescending(x => x.Name, new NaturalFileNameSortComparer()),
@@ -67,6 +82,8 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 			Environment.Exit(1);
 		}
 		Console.WriteLine("[SUCCESS] Copy remote file to local");
+
+		await cli.HSetAsync(convertingCacheKey, Path.GetFileNameWithoutExtension(waitConvertFileName), "1");
 
 		var tempDirectoryPath = Path.Combine(localFolderPath, Path.GetFileNameWithoutExtension(videoPath).Trim());
 		if (!Directory.Exists(tempDirectoryPath))
@@ -188,7 +205,7 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 		if (isNeedUploadKeyFile)
 		{
 			Console.WriteLine("Uploading KEY & IV files");
-			(var isUploadKeyFileSuccess,encryptKeyUrl) = await httpFactoryHandler.UploadFileAsync(keyFilePath, o.UploadUrl!, o.UploadAuthToken, oriUrl: o.OriginalUrl, replaceUrl: o.ReplaceUploadedUrl);
+			(var isUploadKeyFileSuccess, encryptKeyUrl) = await httpFactoryHandler.UploadFileAsync(keyFilePath, o.UploadUrl!, o.UploadAuthToken, oriUrl: o.OriginalUrl, replaceUrl: o.ReplaceUploadedUrl);
 			if (!isUploadKeyFileSuccess)
 			{
 				Console.WriteLine("Upload KEY file Failed");
@@ -291,4 +308,6 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 		GitHubActionHelper.WriteToGitHubOutput("RESULT_PATH", onlineM3u8FilePath);
 		//Console.WriteLine($"::set-output name=RESULT_PATH::{onlineM3u8FilePath}");
 		//Console.WriteLine($"\"RESULT_PATH={onlineM3u8FilePath}\" >> $GITHUB_OUTPUT");
+
+		await cli.HDelAsync(convertingCacheKey,Path.GetFileNameWithoutExtension(waitConvertFileName));
 	});

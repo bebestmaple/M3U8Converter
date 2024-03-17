@@ -6,7 +6,7 @@ name: Convert And Upload
 on:
   schedule:
     #- cron: "0 14-21 * * *"
-    - cron: "0 */4 * * *"
+    - cron: "0 */1 * * *"
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
     inputs:
@@ -84,7 +84,7 @@ jobs:
       - name: Convert
         id: convert
         run: |
-          ${{ github.workspace }}/publish/ConsoleM3U8 --remote-convert-folder "${{ github.workspace }}/drive_${{secrets.RCLONE_DRIVE_NAME}}/${{secrets.WAIT_CONVERT_RCLONE_FOLDER_PATH}}" --remote-result-folder "${{ github.workspace }}/M3U8" --file-compare-type 3 --local-folder "${{ github.workspace }}" --keyUrl "${{ secrets.ENCRYPTION_KEY_URL }}" --ivUrl "${{ secrets.ENCRYPTION_IV_URL }}" -u ${{ secrets.UPLOAD_URL }} -t "${{ secrets.UPLOAD_TOKEN }}" -o ${{secrets.ORIGINAL_URL}} -r ${{secrets.REPLACE_URL}}
+          ${{ github.workspace }}/publish/ConsoleM3U8 --redis "${{secrets.REDIS}}" --remote-convert-folder "${{ github.workspace }}/drive_${{secrets.RCLONE_DRIVE_NAME}}/${{secrets.WAIT_CONVERT_RCLONE_FOLDER_PATH}}" --remote-result-folder "${{ github.workspace }}/M3U8" --file-compare-type 3 --local-folder "${{ github.workspace }}" --keyUrl "${{ secrets.ENCRYPTION_KEY_URL }}" --ivUrl "${{ secrets.ENCRYPTION_IV_URL }}" -u ${{ secrets.UPLOAD_URL }} -t "${{ secrets.UPLOAD_TOKEN }}" -o ${{secrets.ORIGINAL_URL}} -r ${{secrets.REPLACE_URL}}
     
       - name: Upload M3U8
         run: |

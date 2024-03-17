@@ -4,6 +4,8 @@ namespace ConsoleM3U8
 {
     public sealed class Options
     {
+        [Option("redis", Required = true, HelpText = "Set redis connection string")]
+        public string? RedisConnectionString{get;set;}
 
         [Option("remote-convert-folder", Required = true, HelpText = "Set remote path need to convert")]
         public string? RemoteWaitConvertFolderPath { get; set; }
