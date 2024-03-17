@@ -41,36 +41,45 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 			Console.WriteLine("No file to convert");
 			Environment.Exit(1);
 		}
+		FileInfo? remoteWaitConvertFileInfo = null;
 		var convertingCacheKey = "Converting";
-		var convertingFileList = (await cli.HGetAllAsync(convertingCacheKey))?.Keys.ToList() ?? new List<string>();
+		while (true)
+		{
+			var convertingFileList = (await cli.HGetAllAsync(convertingCacheKey))?.Keys.ToList() ?? new List<string>();
 
-		var remoteResultDirInfo = new DirectoryInfo(remoteResultPath);
-		var remoteResultFileInfos = remoteResultDirInfo.GetFiles();
-		var remoteResultFileNames = remoteResultFileInfos
-			.Select(x => Path.GetFileNameWithoutExtension(x.Name))
-			.ToArray();
-		var remoteWaitConvertFilePathQuery = remoteWaitConvertFileInfos
-			.Where(x =>
+			var remoteResultDirInfo = new DirectoryInfo(remoteResultPath);
+			var remoteResultFileInfos = remoteResultDirInfo.GetFiles();
+			var remoteResultFileNames = remoteResultFileInfos
+				.Select(x => Path.GetFileNameWithoutExtension(x.Name))
+				.ToArray();
+			var remoteWaitConvertFilePathQuery = remoteWaitConvertFileInfos
+				.Where(x =>
+				{
+					var name = Path.GetFileNameWithoutExtension(x.Name);
+					return !remoteResultFileNames.Contains(name) && !convertingFileList.Contains(name);
+				});
+			remoteWaitConvertFilePathQuery = o.FileCompareType switch
 			{
-				var name = Path.GetFileNameWithoutExtension(x.Name);
-				return !remoteResultFileNames.Contains(name) && !convertingFileList.Contains(name);
-			});
-		remoteWaitConvertFilePathQuery = o.FileCompareType switch
-		{
-			2 => remoteWaitConvertFilePathQuery.OrderByDescending(x => x.Name, new NaturalFileNameSortComparer()),
-			3 => remoteWaitConvertFilePathQuery.OrderBy(x => x.Length),
-			4 => remoteWaitConvertFilePathQuery.OrderByDescending(x => x.Length),
-			_ => remoteWaitConvertFilePathQuery.OrderBy(x => x.Name, new NaturalFileNameSortComparer()),
-		};
-		var remoteWaitConvertFileInfo = remoteWaitConvertFilePathQuery.FirstOrDefault();
-		if (remoteWaitConvertFileInfo == null)
-		{
-			Console.WriteLine("No file to convert");
-			Environment.Exit(1);
+				2 => remoteWaitConvertFilePathQuery.OrderByDescending(x => x.Name, new NaturalFileNameSortComparer()),
+				3 => remoteWaitConvertFilePathQuery.OrderBy(x => x.Length),
+				4 => remoteWaitConvertFilePathQuery.OrderByDescending(x => x.Length),
+				_ => remoteWaitConvertFilePathQuery.OrderBy(x => x.Name, new NaturalFileNameSortComparer()),
+			};
+			remoteWaitConvertFileInfo = remoteWaitConvertFilePathQuery.FirstOrDefault();
+			if (remoteWaitConvertFileInfo == null)
+			{
+				Console.WriteLine("No file to convert");
+				Environment.Exit(1);
+			}
+			Console.WriteLine("[SUCCESS] Get remote file need to convert");
+
+
+			var isSetKeySuccess = await cli.HSetNxAsync(convertingCacheKey, Path.GetFileNameWithoutExtension(remoteWaitConvertFileInfo.Name), "1");
+			if (isSetKeySuccess)
+			{
+				break;
+			}
 		}
-		Console.WriteLine("[SUCCESS] Get remote file need to convert");
-
-
 		var waitConvertFileName = remoteWaitConvertFileInfo.Name;
 		Console.WriteLine($"Copy remote file to local:{waitConvertFileName}[{FileHelper.FormatFileSize(remoteWaitConvertFileInfo.Length)}]");
 		var localFolderPath = o.LocalFolderPath!;
@@ -79,11 +88,10 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 		if (!File.Exists(videoPath))
 		{
 			Console.WriteLine("[Error] Copy remote file to local Failed");
+			await cli.HDelAsync(convertingCacheKey, Path.GetFileNameWithoutExtension(waitConvertFileName));
 			Environment.Exit(1);
 		}
 		Console.WriteLine("[SUCCESS] Copy remote file to local");
-
-		await cli.HSetAsync(convertingCacheKey, Path.GetFileNameWithoutExtension(waitConvertFileName), "1");
 
 		var tempDirectoryPath = Path.Combine(localFolderPath, Path.GetFileNameWithoutExtension(videoPath).Trim());
 		if (!Directory.Exists(tempDirectoryPath))
@@ -309,5 +317,5 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 		//Console.WriteLine($"::set-output name=RESULT_PATH::{onlineM3u8FilePath}");
 		//Console.WriteLine($"\"RESULT_PATH={onlineM3u8FilePath}\" >> $GITHUB_OUTPUT");
 
-		await cli.HDelAsync(convertingCacheKey,Path.GetFileNameWithoutExtension(waitConvertFileName));
+		await cli.HDelAsync(convertingCacheKey, Path.GetFileNameWithoutExtension(waitConvertFileName));
 	});
