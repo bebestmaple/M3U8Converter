@@ -79,6 +79,10 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 			{
 				break;
 			}
+			else
+			{
+				remoteWaitConvertFileInfo = null;
+			}
 		}
 		var waitConvertFileName = remoteWaitConvertFileInfo.Name;
 		Console.WriteLine($"Copy remote file to local:{waitConvertFileName}[{FileHelper.FormatFileSize(remoteWaitConvertFileInfo.Length)}]");
