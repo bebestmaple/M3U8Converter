@@ -84,17 +84,16 @@ await CommandLine.Parser.Default.ParseArguments<Options>(args)
 			Environment.Exit(1);
 		}
 
-		var remoteWaitConvertFileInfo = remoteWaitConvertFileInfos.FirstOrDefault(x=>x.Name == waitConvertFileName);
+		var remoteWaitConvertFileInfo = remoteWaitConvertFileInfos.FirstOrDefault(x => x.Name == waitConvertFileName);
 		if (remoteWaitConvertFileInfo == null)
 		{
 			Console.WriteLine($"no file named {waitConvertFileName}");
 			Environment.Exit(1);
 		}
-		var convertingCacheKey = "Converting";
-		var convertingFileList = (await cli.HGetAllAsync(convertingCacheKey))?.Keys.ToList() ?? new List<string>();
-		
+
 		Console.WriteLine("[SUCCESS] Get remote file need to convert");
 
+		var convertingCacheKey = "Converting";
 		var isSetKeySuccess = await cli.HSetNxAsync(convertingCacheKey, Path.GetFileNameWithoutExtension(remoteWaitConvertFileInfo.Name), "1");
 
 		Console.WriteLine($"Copy remote file to local:{waitConvertFileName}[{FileHelper.FormatFileSize(remoteWaitConvertFileInfo.Length)}]");
