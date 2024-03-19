@@ -5,9 +5,9 @@ name: Convert And Upload
 # Controls when the workflow will run
 on:
   schedule:
-    - cron: "0 14-21 * * *"
+    #- cron: "0 14-21 * * *"
     #- cron: "0 */1 * * *"
-    #- cron: "*/10 * * * *"
+    - cron: "*/30 * * * *"
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
     inputs:
