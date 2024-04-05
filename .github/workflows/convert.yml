@@ -53,6 +53,7 @@ jobs:
         uses: AnimMouse/setup-ffmpeg@v1
         with:
           token: ${{ secrets.GH_PAT }}
+          version: 6.1
 
       # Setup rclone
       - name: Set up rclone
