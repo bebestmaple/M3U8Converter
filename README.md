@@ -8,7 +8,7 @@ This is a .NET 7.0 console application that converts video files to m3u8 format 
 
 `--remote-result-folder`: Required. Remote folder path to store the result.
 
-`--file-compare-type: Optional. File comparison type. Default is 1. Options:
+`--file-compare-type`: Optional. File comparison type. Default is 1. Options:
 
 1: File name ascending
 
