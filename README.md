@@ -22,7 +22,7 @@ This is a .NET 7.0 console application that converts video files to m3u8 format 
 
 ## Example Usage:
 ```bash
-M3U8Converter --redis "localhost:6379" --remote-convert-folder "/remote/folder" --remote-result-folder "/remote/result" --local-folder "/local/folder" --binPath "/path/to/ffmpeg" --UploadUrl "http://upload.url"
+ConsoleM3U8 --redis "localhost:6379" --remote-convert-folder "/remote/folder" --remote-result-folder "/remote/result" --local-folder "/local/folder" --binPath "/path/to/ffmpeg" --UploadUrl "http://upload.url"
 ```
 
 ---
